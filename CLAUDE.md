@@ -33,10 +33,11 @@ Claude Desktop --stdio--> main.py (@mcp.tool)
 in a module listed in `bridge/dispatcher.py:HANDLER_MODULES` becomes the operation
 `<operation>`. There is no second table to keep in sync: writing the handler is
 what exposes it. Handler modules are imported one by one and a module that fails
-to import (`export_handlers` and `import_handlers` do `import cadwork` at module
-level) is recorded in `unavailable_modules` without taking the others down.
-`CommandDispatcher().diagnostics()` reports what was found. Outside Cadwork
-discovery yields 121 operations; inside, 139 plus the extensions.
+to import is recorded in `unavailable_modules` without taking the others down —
+`export_handlers` and `import_handlers` do `import cadwork` at module level, so
+they need either Cadwork or the `cwapi3d` stubs. `CommandDispatcher().diagnostics()`
+reports what was found: **140 operations, no unavailable modules**, with the stubs
+installed; 121 without them.
 
 ## Critical: the `*_controller` name collision
 
@@ -82,10 +83,12 @@ handlers exist, so these answer `Unknown operation` with the list of valid ones:
 They were deliberately left declared as roadmap markers. Implementing one means
 writing its `handle_*`; the dispatcher then picks it up with no further wiring.
 
-**Untested against Cadwork.** The repair is covered by unit tests that stub the
-Cadwork API (see below), and it compiles, but nothing in this repository has been
-run against a live Cadwork installation. Treat the first real call as the actual
-verification.
+**How far verification actually goes.** The server starts, reaches its lifespan
+handler and sends its `ping` to the bridge. Discovery finds all 140 operations,
+and mypy checks every handler call site against the Cadwork 30 stubs. What has
+*not* happened: a single operation executed against a live model. The stubs
+type-check but do nothing, so passing mypy says the call is well-formed, not that
+Cadwork accepts it. Treat the first real call as the verification.
 
 **Other loose ends.** `bridge/handlers/base_handler.py:BaseHandler.safe_call` is
 dead code, called from nowhere. `create_auto_container_from_standard` and
@@ -102,20 +105,44 @@ describes the abandoned "no handlers layer" refactor — read it as history.
   resolved. `start.txt` is gone: the plugin imports `cadwork_bridge` directly
   instead of `exec()`-ing a text file.
 - Bridge port: the **server** side reads `CW_PORT` (default 53002, `core/server.py`); the **bridge** side hardcodes `53002` (`cadwork_bridge.py`). Changing it means editing both.
-- Python 3.12 (`mypy.ini`; the README's "3.8+" is stale). `cwapi3d` and the `cadwork` module are only importable inside Cadwork.
+- Python 3.12 (`mypy.ini`; the README's "3.8+" is stale). Cadwork provides the real
+  `element_controller`, `geometry_controller`, `attribute_controller` and `cadwork`
+  modules; the `cwapi3d` package provides stubs of the same names, so those imports
+  also resolve outside Cadwork. The stubs type-check but do nothing, so an import
+  succeeding proves nothing about a call working.
+- `mcp` must stay below 2.0: the 2.x line removed `mcp.server.fastmcp`, which
+  `main.py` and `core/server.py` import.
 - The bridge is started by hand in Cadwork: **Window → Plugins → MCP Bridge → Start Bridge**. After editing bridge-side files, Stop/Start is not sufficient for already-imported modules — restart Cadwork.
 - `stop_bridge()` in the plugin only flips a boolean; it neither closes the socket nor stops the daemon thread.
 
 ## Commands
 
+Work in the project virtualenv. Installing the requirements into a global Python
+upgrades `starlette`, `pydantic` and `typing_extensions` and will break unrelated
+packages there.
+
 ```powershell
-pip install -r requirements.txt        # note: mypy is NOT in requirements.txt
-python -m unittest discover -s tests -t .              # 72 tests, no Cadwork needed
-python -m unittest tests.test_module_inventory         # one module
-python -m unittest tests.test_dispatcher.Discovery.test_the_real_handler_modules_expose_ping
-python -m mypy .                       # baseline: 13 errors in 4 files (all pre-existing)
-python main.py                         # run the MCP server standalone (stdio)
-python main.py --transport http --port 8001   # HTTP mode calls mcp.app, which FastMCP does not expose — expect failure
+python -m venv .venv
+.venv\Scripts\python -m pip install -r requirements.txt
+
+.venv\Scripts\python -m unittest discover -s tests -t .   # 78 tests, no Cadwork needed
+.venv\Scripts\python -m unittest tests.test_module_inventory        # one module
+.venv\Scripts\python -m unittest tests.test_dispatcher.Discovery.test_the_real_handler_modules_expose_ping
+.venv\Scripts\python -m mypy .         # baseline: 13 errors in 4 files (all pre-existing)
+.venv\Scripts\python main.py           # MCP server, stdio
+.venv\Scripts\python main.py --transport http --port 8001
+```
+
+**The mypy baseline depends on the `cwapi3d` version, and this trips people up.**
+Those stubs define the Cadwork API that the handlers are checked against, so the
+pin must match the *installed* Cadwork major version — 30 here. Against the
+Cadwork 32 stubs the same, correct code reports 97 errors instead of 13, 56 of
+them "module has no attribute". Deliberately installing the next major turns that
+into an upgrade checklist:
+
+```powershell
+.venv\Scripts\python -m pip install "cwapi3d==32.443.10"
+.venv\Scripts\python -m mypy .    # what Cadwork 32 renamed or removed
 ```
 
 The suite runs **outside Cadwork** by stubbing it: `tests/stub_handlers*.py` stand in

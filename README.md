@@ -20,11 +20,16 @@ step 3).
 ```bash
 git clone <repository-url>
 cd cadworkMCP
-pip install -r requirements.txt
+python -m venv .venv
+.venv\Scripts\python -m pip install -r requirements.txt
 ```
 
-Only `mcp` is needed to run the server; `cwapi3d` provides type stubs for the
-Cadwork API, whose real modules exist only inside Cadwork.
+Use the virtualenv. Installing into a global Python upgrades `starlette`,
+`pydantic` and `typing_extensions`, which breaks unrelated packages there.
+
+Only `mcp` is needed at run time. `cwapi3d` provides type stubs for the Cadwork
+API — **keep its major version equal to your installed Cadwork version**, or mypy
+checks the code against the wrong API in both directions.
 
 ### 3. Set up the Cadwork bridge
 Copy `API.x64/MCPBridge/` into your Cadwork user profile's `3d\API.x64` directory,
@@ -45,12 +50,14 @@ The MCP configuration goes into the Claude Desktop `config.json`:
 **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
 **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
 
-Add the following, with the path to your own checkout:
+Add the following, with the paths to your own checkout. Point `command` at the
+virtualenv's interpreter, otherwise Claude Desktop uses whichever `python` is on
+its PATH — which will not have `mcp` installed:
 ```json
 {
   "mcpServers": {
     "cadwork": {
-      "command": "python",
+      "command": "C:\\path\\to\\cadworkMCP\\.venv\\Scripts\\python.exe",
       "args": ["C:\\path\\to\\cadworkMCP\\main.py"],
       "env": { "CW_PORT": "53002" }
     }
@@ -118,7 +125,7 @@ Claude Desktop starts the MCP server itself when you chat with Claude. No manual
 ## 🎯 Tests
 
 ```bash
-python -m unittest discover -s tests -t .     # 72 tests, no Cadwork needed
+.venv\Scripts\python -m unittest discover -s tests -t .   # 78 tests, no Cadwork needed
 ```
 
 The suite runs outside Cadwork by stubbing it: handler modules are replaced by
@@ -128,8 +135,11 @@ The suite runs outside Cadwork by stubbing it: handler modules are replaced by
 *inside* its functions — keep it that way.
 
 Covered: the module inventory logic, the dispatcher's handler discovery and
-response contract, and the Cadwork API router. **Not covered: anything against a
-live Cadwork installation.**
+response contract, the Cadwork API router, and server construction with every tool
+declaration. The server-construction tests skip when `mcp` is absent, so the rest
+of the suite needs nothing beyond the standard library.
+
+**Not covered: any operation executed against a live model.**
 
 The older suite the original document advertised (37/37, 25/25, …) was deleted in
 commit `8e01527` and is unrelated.

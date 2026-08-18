@@ -3,10 +3,17 @@
 # main.py and core/server.py import. Lifting it means migrating to the 2.x API.
 mcp>=1.6,<2
 
-# Type stubs for the Cadwork API. The real element_controller,
-# geometry_controller and attribute_controller modules are provided by Cadwork
-# and are only importable inside it.
-cwapi3d
+# Type stubs for the Cadwork API: element_controller, geometry_controller,
+# attribute_controller, cadwork and friends. Cadwork provides the real modules;
+# these stubs let mypy check the handler call sites, and let them be imported
+# outside Cadwork.
+#
+# KEEP THIS MAJOR VERSION EQUAL TO THE INSTALLED CADWORK VERSION. Checking
+# against the wrong one is worse than not checking: cwapi3d 32 reports 84 extra
+# errors against handlers that are correct for Cadwork 30. That said, installing
+# the next major deliberately turns those errors into an upgrade checklist:
+#   pip install "cwapi3d==32.443.10" && mypy .
+cwapi3d>=30,<31
 
 # Only needed by `python main.py --transport http`, a code path that calls
 # mcp.app and does not currently work.
