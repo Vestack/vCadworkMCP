@@ -135,7 +135,12 @@ python -m venv .venv
 
 **The mypy baseline depends on the `cwapi3d` version, and this trips people up.**
 Those stubs define the Cadwork API that the handlers are checked against, so the
-pin must match the *installed* Cadwork major version — 30 here. Against the
+pin must match the Cadwork version you target. Note this machine carries two
+installations: v30 from 2024, and 33.0 "2026 BETA" in `EXE_2026` with its own
+`userprofil_2026`. The pin targets v30, for which the handlers check clean; PyPI
+has no 33.x stubs. Cadwork's embedded interpreter for 2026 is **Python 3.14**
+(`EXE_2026/Pclib.x64/python314`), so bridge-side code runs there, not on the 3.12
+that `mypy.ini` declares. Against the
 Cadwork 32 stubs the same, correct code reports 97 errors instead of 13, 56 of
 them "module has no attribute". Deliberately installing the next major turns that
 into an upgrade checklist:

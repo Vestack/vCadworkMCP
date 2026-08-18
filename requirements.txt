@@ -8,11 +8,19 @@ mcp>=1.6,<2
 # these stubs let mypy check the handler call sites, and let them be imported
 # outside Cadwork.
 #
-# KEEP THIS MAJOR VERSION EQUAL TO THE INSTALLED CADWORK VERSION. Checking
-# against the wrong one is worse than not checking: cwapi3d 32 reports 84 extra
-# errors against handlers that are correct for Cadwork 30. That said, installing
-# the next major deliberately turns those errors into an upgrade checklist:
+# KEEP THIS MAJOR VERSION EQUAL TO THE CADWORK VERSION YOU TARGET. Checking
+# against the wrong one is worse than not checking, in both directions.
+#
+# This machine has two Cadwork installations: v30 from 2024 (EXE_30,
+# userprofil_30) and 33.0 "2026 BETA" (EXE_2026, userprofil_2026). PyPI has no
+# 33.x stubs, so the pin below gives a clean baseline against v30 (13 errors),
+# while the closest available approximation of the newer API reports 97:
 #   pip install "cwapi3d==32.443.10" && mypy .
+# Those 84 extra errors name the functions renamed or removed since v30 --
+# add_wall_section_x/y, export_2d_wireframe, get_roof_surfaces,
+# calculate_roof_area -- so they are a migration checklist, not noise, for
+# anyone moving to 2026. Confirm against the API the running Cadwork actually
+# exposes before acting on them.
 cwapi3d>=30,<31
 
 # Only needed by `python main.py --transport http`, a code path that calls
