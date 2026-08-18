@@ -32,6 +32,11 @@ from controllers.transformation_controller import TransformationController
 from controllers.optimization_controller import OptimizationController
 from controllers.list_controller import ListController
 
+# Domain extension: Vestack modular construction. Remove this import, the
+# instance below, the tool at the end of this file and the vestack/ package to
+# return to a purely generic Cadwork MCP server.
+from vestack.mcp_controller import VestackController
+
 # Create MCP server
 mcp = create_mcp_server()
 
@@ -52,6 +57,7 @@ container_ctrl = ContainerController()
 transformation_ctrl = TransformationController()
 optimization_ctrl = OptimizationController()
 list_ctrl = ListController()
+vestack_ctrl = VestackController()
 
 # --- ELEMENT TOOLS ---
 
@@ -1439,6 +1445,31 @@ async def optimize_cutting_list(element_ids: Optional[List[int]] = None,
     return await optimization_ctrl.optimize_cutting_list(element_ids, stock_lengths, optimization_algorithm,
                                                        kerf_width, min_offcut_length, max_waste_percentage,
                                                        material_groups, priority_mode)
+
+
+# --- VESTACK MODULAR TOOLS (domain extension) ---
+
+@mcp.tool(
+    name="get_module_inventory",
+    description=(
+        "Lists the modules of a Vestack modular building with their dimensions. "
+        "A module is a rectangular box identified by an 'MXXX' id (M001, M139...) "
+        "read from a Cadwork user attribute named 'Module', or failing that from "
+        "the subgroup, group or element name; the field actually used is reported "
+        "as id_source. Per module: length, width and height in MILLIMETRES "
+        "(length and width come from the bottom floor slab, height from the whole "
+        "envelope), footprint area in m2, wall count, which sides are open "
+        "('-x', '+x', '-y', '+y' — an open module is one built to join into a "
+        "larger room), whether a top floor is present, and the building and level "
+        "from the 'Batiment' and 'Niveau' attributes. "
+        "Scanning the whole model reads the vertices of every element and is slow: "
+        "pass element_ids, or active_only=true to cover just the current selection."
+    )
+)
+async def get_module_inventory(element_ids: Optional[List[int]] = None,
+                               active_only: bool = False,
+                               id_source: Optional[str] = None) -> Dict[str, Any]:
+    return await vestack_ctrl.get_module_inventory(element_ids, active_only, id_source)
 
 
 if __name__ == "__main__":
