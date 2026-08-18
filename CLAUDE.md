@@ -95,7 +95,12 @@ describes the abandoned "no handlers layer" refactor — read it as history.
 
 ## Hard environment constraints
 
-- **The checkout must live at `C:\cadworkMCP`.** The path is hardcoded in `start.txt`, `API.x64/MCPBridge/MCPBridge.py` and `claude_desktop_config.json`. Nothing resolves it dynamically.
+- **The checkout can live anywhere.** The plugin resolves it at run time:
+  `CADWORK_MCP_HOME`, else `mcp_home.txt` next to `MCPBridge.py`, else the legacy
+  `C:\cadworkMCP` — first candidate containing `cadwork_bridge.py` wins
+  (`API.x64/MCPBridge/MCPBridge.py:resolve_mcp_home`). The GUI shows what it
+  resolved. `start.txt` is gone: the plugin imports `cadwork_bridge` directly
+  instead of `exec()`-ing a text file.
 - Bridge port: the **server** side reads `CW_PORT` (default 53002, `core/server.py`); the **bridge** side hardcodes `53002` (`cadwork_bridge.py`). Changing it means editing both.
 - Python 3.12 (`mypy.ini`; the README's "3.8+" is stale). `cwapi3d` and the `cadwork` module are only importable inside Cadwork.
 - The bridge is started by hand in Cadwork: **Window → Plugins → MCP Bridge → Start Bridge**. After editing bridge-side files, Stop/Start is not sufficient for already-imported modules — restart Cadwork.

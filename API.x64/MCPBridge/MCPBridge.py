@@ -1,6 +1,8 @@
 """
 Cadwork MCP Bridge Plugin - Simple Start/Stop GUI
-Executes the MCP bridge start script with simple controls
+
+This file lives in the Cadwork user profile, away from the repository, so it has
+to be told where the repository is. See resolve_mcp_home() for how it decides.
 """
 
 import os
@@ -12,54 +14,114 @@ from typing import Optional
 # Cadwork imports
 import utility_controller as uc
 
+# Fallback for installations that follow the original instructions.
+LEGACY_HOME = r'C:\cadworkMCP'
+
 # Global variables
 bridge_running = False
 
+def resolve_mcp_home() -> str:
+    """Locate the cadworkMCP checkout.
+
+    In order:
+      1. the CADWORK_MCP_HOME environment variable,
+      2. a file named mcp_home.txt next to this plugin, holding the path,
+      3. C:\\cadworkMCP, the original hard-coded location.
+
+    The first candidate that contains cadwork_bridge.py wins, so a stale
+    environment variable does not shadow a working mcp_home.txt.
+    """
+    candidates = []
+
+    from_env = os.environ.get('CADWORK_MCP_HOME', '').strip()
+    if from_env:
+        candidates.append(from_env)
+
+    pointer = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'mcp_home.txt')
+    if os.path.isfile(pointer):
+        try:
+            with open(pointer, 'r', encoding='utf-8') as handle:
+                for line in handle:
+                    line = line.strip()
+                    if line and not line.startswith('#'):
+                        candidates.append(line)
+                        break
+        except OSError as exc:
+            uc.print_to_console(f"Could not read {pointer}: {exc}")
+
+    candidates.append(LEGACY_HOME)
+
+    for candidate in candidates:
+        if os.path.isfile(os.path.join(candidate, 'cadwork_bridge.py')):
+            return candidate
+
+    raise FileNotFoundError(
+        "cadworkMCP checkout not found. Looked in: "
+        + ", ".join(candidates)
+        + ". Set CADWORK_MCP_HOME, or put the path in mcp_home.txt next to "
+        + "MCPBridge.py."
+    )
+
+def is_listening(port: int = 53002, attempts: int = 5) -> bool:
+    """Whether something accepts connections on the bridge port.
+
+    cadwork_bridge.main() starts a daemon thread and returns whether or not the
+    bind succeeded, so the only honest way to report "Running" is to connect.
+    """
+    import socket
+    import time
+
+    for attempt in range(attempts):
+        try:
+            with socket.create_connection(("127.0.0.1", port), timeout=1.0):
+                return True
+        except OSError:
+            if attempt < attempts - 1:
+                time.sleep(0.2)
+    return False
+
 def start_bridge() -> bool:
-    """Start the MCP bridge by executing start.txt"""
+    """Start the MCP bridge socket server inside Cadwork."""
     global bridge_running
-    
+
     if bridge_running:
         return False
-    
+
     try:
-        # Change to the MCP directory and set up environment like in console
-        original_dir = os.getcwd()
-        bridge_dir = r'C:\cadworkMCP'
-        
-        try:
-            # Set working directory
-            os.chdir(bridge_dir)
-            
-            # Add to Python path if not already there
-            if bridge_dir not in sys.path:
-                sys.path.insert(0, bridge_dir)
-            
-            # Read and execute the start script
-            with open(os.path.join(bridge_dir, 'start.txt'), 'r') as f:
-                script_content = f.read()
-            
-            # Execute in global namespace like console does
-            exec(script_content, globals())
-            
-            bridge_running = True
-            uc.print_to_console("MCP Bridge started successfully")
-            return True
-            
-        finally:
-            # Restore original directory
-            os.chdir(original_dir)
-        
+        home = resolve_mcp_home()
+        if home not in sys.path:
+            sys.path.insert(0, home)
+
+        # Imported here, not at module level: the path is only known now.
+        import cadwork_bridge
+
+        cadwork_bridge.main()
+
+        bridge_running = is_listening()
+        if bridge_running:
+            uc.print_to_console(f"MCP Bridge listening on 53002, from {home}")
+        else:
+            uc.print_to_console(
+                "MCP Bridge did not come up on port 53002. Another bridge or "
+                "Cadwork instance may already hold it; restart Cadwork.")
+        return bridge_running
+
     except Exception as e:
         uc.print_to_console(f"Failed to start bridge: {e}")
         return False
 
 def stop_bridge() -> None:
-    """Stop the MCP bridge"""
+    """Mark the bridge as stopped.
+
+    The socket server runs in a daemon thread that this plugin has no handle on,
+    so the port stays bound until Cadwork exits. Restart Cadwork to release it or
+    to reload changed bridge code.
+    """
     global bridge_running
-    
+
     bridge_running = False
-    uc.print_to_console("MCP Bridge stopped")
+    uc.print_to_console(
+        "MCP Bridge marked as stopped. The socket stays open until Cadwork exits.")
 
 class BridgeGUI:
     """Simple GUI for bridge control"""
@@ -74,7 +136,7 @@ class BridgeGUI:
         """Create the GUI"""
         self.root = tk.Tk()
         self.root.title("MCP Bridge Control")
-        self.root.geometry("350x200")
+        self.root.geometry("380x260")
         self.root.resizable(False, False)
         
         # Title
@@ -99,9 +161,14 @@ class BridgeGUI:
                                   command=self.on_stop, width=12, state="disabled")
         self.stop_btn.pack(side="left", padx=10)
         
-        # Info
-        info_label = ttk.Label(self.root, text="Port: 53002", 
-                              font=("Arial", 9), foreground="gray")
+        # Info: the port, and which checkout the bridge will run from
+        try:
+            location = resolve_mcp_home()
+        except Exception as exc:
+            location = f"NOT FOUND - {exc}"
+        info_label = ttk.Label(self.root, text=f"Port: 53002\n{location}",
+                               font=("Arial", 9), foreground="gray",
+                               wraplength=330, justify="center")
         info_label.pack(pady=5)
         
         # Center window
@@ -113,7 +180,7 @@ class BridgeGUI:
             return
             
         self.root.update_idletasks()
-        width, height = 350, 200
+        width, height = 380, 260
         x = (self.root.winfo_screenwidth() // 2) - (width // 2)
         y = (self.root.winfo_screenheight() // 2) - (height // 2)
         self.root.geometry(f"{width}x{height}+{x}+{y}")
@@ -122,15 +189,15 @@ class BridgeGUI:
         """Handle start button"""
         success = start_bridge()
         if success:
-            messagebox.showinfo("Bridge", "MCP Bridge started!")
+            messagebox.showinfo("Bridge", "MCP Bridge listening on port 53002.")
         else:
-            messagebox.showerror("Error", "Failed to start bridge!")
+            messagebox.showerror("Error", "Bridge did not start. See the Cadwork console for the reason.")
         self.update_status()
     
     def on_stop(self) -> None:
         """Handle stop button"""
         stop_bridge()
-        messagebox.showinfo("Bridge", "MCP Bridge stopped!")
+        messagebox.showinfo("Bridge", "Marked as stopped. The socket stays open until Cadwork exits.")
         self.update_status()
     
     def update_status(self) -> None:

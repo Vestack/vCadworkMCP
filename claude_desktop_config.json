@@ -1,9 +1,9 @@
 {
   "mcpServers": {
-      "cadwork": {
+    "cadwork": {
       "command": "python",
       "args": [
-        "C:\\cadworkMCP\\main.py"
+        "PATH-TO-YOUR-CHECKOUT/main.py"
       ],
       "env": {
         "CW_PORT": "53002"

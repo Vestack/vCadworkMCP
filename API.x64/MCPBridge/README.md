@@ -31,10 +31,21 @@ After copying, the structure should look like this:
 └── MCPBridge\
     ├── MCPBridge.py          ← the plugin itself (GUI)
     ├── plugin_info.xml       ← plugin metadata
+    ├── mcp_home.txt          ← optional: path to your checkout (see below)
     └── README.md             ← this guide
 ```
 
-The plugin does not contain the bridge code. It executes `C:\cadworkMCP\start.txt`, which in turn runs `C:\cadworkMCP\cadwork_bridge.py` — so the repository must stay at `C:\cadworkMCP`.
+The plugin does not contain the bridge code: it imports `cadwork_bridge` from your
+checkout of this repository. Tell it where that checkout is, by either setting the
+`CADWORK_MCP_HOME` environment variable, or creating `mcp_home.txt` next to
+`MCPBridge.py` with the path on its first line:
+
+```
+C:\Users\you\Developpements\cadworkMCP
+```
+
+Without either it falls back to `C:\cadworkMCP`. The GUI displays the path it
+resolved, so a wrong setting is visible before you press Start.
 
 ## 🚀 Using the plugin
 

@@ -14,16 +14,23 @@ A **Model Context Protocol (MCP) server** for Cadwork 3D that lets Claude and ot
 - **Claude Desktop**
 
 ### 2. Clone the repository and install the dependencies
-⚠️ **IMPORTANT:** the project **must** live on the C: drive, at `C:\cadworkMCP`. That path is hardcoded in `start.txt`, in the Cadwork plugin and in `claude_desktop_config.json`.
+The checkout can live anywhere: the plugin resolves its location at run time (see
+step 3).
 
 ```bash
-git clone <repository-url> C:\cadworkMCP
-cd C:\cadworkMCP
+git clone <repository-url>
+cd cadworkMCP
 pip install -r requirements.txt
 ```
 
+Only `mcp` is needed to run the server; `cwapi3d` provides type stubs for the
+Cadwork API, whose real modules exist only inside Cadwork.
+
 ### 3. Set up the Cadwork bridge
-The `bridge` folder is activated automatically through the MCP Bridge plugin. To install the plugin itself, see [`API.x64/MCPBridge/README.md`](API.x64/MCPBridge/README.md).
+Copy `API.x64/MCPBridge/` into your Cadwork user profile's `3d\API.x64` directory,
+then point it at this checkout — either set `CADWORK_MCP_HOME`, or create
+`mcp_home.txt` next to `MCPBridge.py` holding the path. Full guide:
+[`API.x64/MCPBridge/README.md`](API.x64/MCPBridge/README.md).
 
 **Starting the bridge:**
 1. Start Cadwork 3D
@@ -38,14 +45,14 @@ The MCP configuration goes into the Claude Desktop `config.json`:
 **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
 **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
 
-Add the following:
+Add the following, with the path to your own checkout:
 ```json
 {
   "mcpServers": {
     "cadwork": {
       "command": "python",
-      "args": ["C:\\cadworkMCP\\main.py"],
-      "env": {}
+      "args": ["C:\\path\\to\\cadworkMCP\\main.py"],
+      "env": { "CW_PORT": "53002" }
     }
   }
 }
@@ -185,7 +192,7 @@ commit `8e01527` and is unrelated.
 ## 🏗️ Project structure
 
 ```
-C:\cadworkMCP/              # MUST be on C:\
+cadworkMCP/                 # anywhere on disk
 ├── main.py                 # Main MCP server with all tool definitions
 ├── requirements.txt        # Python dependencies
 ├── mypy.ini                # Mypy configuration for type safety
