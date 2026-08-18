@@ -1491,9 +1491,10 @@ if __name__ == "__main__":
     if args.transport == "http":
         logger.info(f"Starting Cadwork MCP Server with HTTP transport on {args.host}:{args.port}...")
         try:
-            # Use uvicorn for HTTP transport
+            # Use uvicorn for HTTP transport. FastMCP has no `.app`; the ASGI
+            # application is built by streamable_http_app().
             import uvicorn
-            uvicorn.run(mcp.app, host=args.host, port=args.port)  # type: ignore
+            uvicorn.run(mcp.streamable_http_app(), host=args.host, port=args.port)
         except KeyboardInterrupt:
             logger.info("Server stopped by user")
         except Exception as e:

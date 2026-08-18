@@ -32,11 +32,22 @@ async def server_lifespan(server: FastMCP) -> AsyncIterator[Dict[str, Any]]:
     # Cleanup
     log_info("Shutting down Cadwork MCP Server...")
 
+SERVER_NAME = "CadworkMCP"
+SERVER_VERSION = "0.2.0"
+
+
 def create_mcp_server() -> FastMCP:
-    """Create and configure MCP server"""
+    """Create and configure MCP server.
+
+    FastMCP takes neither `version` nor `description`; passing them raised a
+    TypeError, so the server could not start at all. The version now travels in
+    the instructions, which is what the client actually gets to read.
+    """
     return FastMCP(
-        "CadworkMCP",
-        version="0.2.0",
-        description="Enhanced Cadwork 3D integration via Python API",
-        lifespan=server_lifespan
+        SERVER_NAME,
+        instructions=(
+            f"Cadwork 3D integration v{SERVER_VERSION}, over the MCP Bridge "
+            "plugin running inside Cadwork. All lengths are millimetres."
+        ),
+        lifespan=server_lifespan,
     )
