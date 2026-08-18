@@ -1,10 +1,10 @@
 """
-Machine Handler für Cadwork Bridge
-Verarbeitet CNC- und fertigungsspezifische Operationen
+Machine handler for the Cadwork bridge
+Handles CNC and production-specific operations
 """
 
 def handle_check_production_list_discrepancies(aParams: dict) -> dict:
-    """Überprüft Produktionslisten auf Unstimmigkeiten"""
+    """Checks production lists for discrepancies"""
     try:
         import machine_controller as mc
         
@@ -16,7 +16,7 @@ def handle_check_production_list_discrepancies(aParams: dict) -> dict:
         # Cadwork API aufrufen
         lDiscrepancies = mc.check_production_list_discrepancies(lProductionListId)
         
-        # Strukturiere Ergebnisse für bessere Analyse
+        # Structure the results for easier analysis
         lAnalysisResults = {
             "production_list_id": lProductionListId,
             "discrepancies_found": 0,
@@ -28,7 +28,7 @@ def handle_check_production_list_discrepancies(aParams: dict) -> dict:
         }
         
         # Simuliere typische Produktionslisten-Checks
-        # (In echter Implementierung würde dies von der Cadwork API kommen)
+        # (in a real implementation this would come from the cadwork API)
         lCheckCategories = [
             "dimensional_accuracy",
             "material_consistency", 
@@ -40,7 +40,7 @@ def handle_check_production_list_discrepancies(aParams: dict) -> dict:
         lFoundIssues = []
         lWarnings = []
         
-        # Beispiel-Analyse basierend auf Produktionslisten-ID
+        # Example analysis based on the production list id
         if lProductionListId % 3 == 0:
             lFoundIssues.append({
                 "type": "dimensional_tolerance",
@@ -59,7 +59,7 @@ def handle_check_production_list_discrepancies(aParams: dict) -> dict:
                 "recommendation": "Consider alternative cutting patterns"
             })
         
-        # Zusammenfassung erstellen
+        # Build the summary
         lAnalysisResults.update({
             "discrepancies_found": len(lFoundIssues),
             "critical_issues": lFoundIssues,

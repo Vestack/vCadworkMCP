@@ -206,7 +206,7 @@ class GeometryController(BaseController):
     
     async def get_element_type(self, aElementId: int) -> dict:
         """
-        Ruft den Typ eines Cadwork-Elements ab
+        Retrieves the type of a cadwork element
         
         Args:
             aElementId: Element-ID
@@ -228,13 +228,13 @@ class GeometryController(BaseController):
     
     async def calculate_total_volume(self, aElementIds: list) -> dict:
         """
-        Berechnet das Gesamtvolumen einer Liste von Elementen
+        Calculates the total volume of a list of elements
         
         Args:
-            aElementIds: Liste der Element-IDs
+            aElementIds: list of element IDs
         
         Returns:
-            dict: Gesamtvolumen in mm³ und anderen Einheiten
+            dict: total volume in mm³ and other units
         """
         try:
             # Validierung
@@ -253,13 +253,13 @@ class GeometryController(BaseController):
     
     async def calculate_total_weight(self, aElementIds: list) -> dict:
         """
-        Berechnet das Gesamtgewicht einer Liste von Elementen
+        Calculates the total weight of a list of elements
         
         Args:
-            aElementIds: Liste der Element-IDs
+            aElementIds: list of element IDs
         
         Returns:
-            dict: Gesamtgewicht in kg und anderen Einheiten
+            dict: total weight in kg and other units
         """
         try:
             # Validierung

@@ -85,14 +85,14 @@ class AttributeController(BaseController):
     
     async def set_group(self, aElementIds: list, aGroup: str) -> dict:
         """
-        Setzt die Gruppe für eine Liste von Elementen
+        Sets the group for a list of elements
         
         Args:
-            aElementIds: Liste der Element-IDs
+            aElementIds: list of element IDs
             aGroup: Gruppen-Name (String)
         
         Returns:
-            dict: Status der Operation
+            dict: status of the operation
         """
         try:
             # Validierung
@@ -115,14 +115,14 @@ class AttributeController(BaseController):
     
     async def set_comment(self, aElementIds: list, aComment: str) -> dict:
         """
-        Setzt den Kommentar für eine Liste von Elementen
+        Sets the comment for a list of elements
         
         Args:
-            aElementIds: Liste der Element-IDs
+            aElementIds: list of element IDs
             aComment: Kommentar-Text (String)
         
         Returns:
-            dict: Status der Operation
+            dict: status of the operation
         """
         try:
             # Validierung
@@ -145,14 +145,14 @@ class AttributeController(BaseController):
     
     async def set_subgroup(self, aElementIds: list, aSubgroup: str) -> dict:
         """
-        Setzt die Untergruppe für eine Liste von Elementen
+        Sets the subgroup for a list of elements
         
         Args:
-            aElementIds: Liste der Element-IDs
+            aElementIds: list of element IDs
             aSubgroup: Untergruppen-Name (String)
         
         Returns:
-            dict: Status der Operation
+            dict: status of the operation
         """
         try:
             # Validierung

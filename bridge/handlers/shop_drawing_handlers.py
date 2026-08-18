@@ -1,10 +1,10 @@
 """
-Shop Drawing Handler für Cadwork Bridge
-Verarbeitet Werkstattzeichnungs-spezifische Operationen
+Shop drawing handler for the Cadwork bridge
+Handles shop-drawing-specific operations
 """
 
 def handle_add_wall_section_x(aParams: dict) -> dict:
-    """Fügt Wandschnitt in X-Richtung hinzu"""
+    """Adds a wall section in the X direction"""
     try:
         import shop_drawing_controller as sdc
         
@@ -30,7 +30,7 @@ def handle_add_wall_section_x(aParams: dict) -> dict:
         return {"status": "error", "message": f"add_wall_section_x failed: {e}"}
 
 def handle_add_wall_section_y(aParams: dict) -> dict:
-    """Fügt Wandschnitt in Y-Richtung hinzu"""
+    """Adds a wall section in the Y direction"""
     try:
         import shop_drawing_controller as sdc
         
@@ -56,7 +56,7 @@ def handle_add_wall_section_y(aParams: dict) -> dict:
         return {"status": "error", "message": f"add_wall_section_y failed: {e}"}
 
 def handle_add_wall_section_vertical(aParams: dict) -> dict:
-    """Fügt vertikalen Wandschnitt hinzu"""
+    """Adds a vertical wall section"""
     try:
         import shop_drawing_controller as sdc
         
@@ -67,8 +67,8 @@ def handle_add_wall_section_vertical(aParams: dict) -> dict:
         if lWallId is None:
             return {"status": "error", "message": "No wall ID provided"}
         
-        # Cadwork API aufrufen - position_vector und section_params sind optional
-        # API macht automatische Position wenn position_vector=None
+        # Call the cadwork API - position_vector and section_params are optional
+        # The API positions the section automatically when position_vector=None
         lSectionId = sdc.add_wall_section_vertical(lWallId, lPositionVector, lSectionParams)
         
         return {
@@ -85,7 +85,7 @@ def handle_add_wall_section_vertical(aParams: dict) -> dict:
         return {"status": "error", "message": f"add_wall_section_vertical failed: {e}"}
 
 def handle_export_2d_wireframe(aParams: dict) -> dict:
-    """Exportiert 2D Drahtmodell aus Zwischenablage"""
+    """Exports a 2D wireframe from the clipboard"""
     try:
         import shop_drawing_controller as sdc
         
@@ -96,7 +96,7 @@ def handle_export_2d_wireframe(aParams: dict) -> dict:
         lScale = aParams.get("scale", 1.0)
         lLineWeights = aParams.get("line_weights", True)
         
-        # Cadwork API aufrufen - ALLE Parameter übergeben
+        # Call the cadwork API - pass ALL parameters
         result = sdc.export_2d_wireframe(
             lClipboardNumber,
             lWithLayout,

@@ -1,11 +1,11 @@
 """
-Roof Handler für Cadwork Bridge
-Verarbeitet Dach-spezifische CAD-Operationen
+Roof handler for the Cadwork bridge
+Handles roof-specific CAD operations
 """
 import math
 
 def handle_get_roof_surfaces(aParams: dict) -> dict:
-    """Ruft Dachflächen-Informationen ab"""
+    """Retrieves roof surface information"""
     try:
         import roof_controller as rc
         
@@ -17,28 +17,28 @@ def handle_get_roof_surfaces(aParams: dict) -> dict:
         # Cadwork API aufrufen
         lRoofSurfaces = rc.get_roof_surfaces(lElementIds)
         
-        # Dachflächen-Informationen strukturieren
+        # Structure the roof surface information
         lSurfaceDetails = []
         
         for lElementId in lElementIds:
             try:
-                # Element-spezifische Dachflächen-Daten sammeln
+                # Collect element-specific roof surface data
                 lElementInfo = rc.get_element_info(lElementId)
                 
-                # Dachflächen-spezifische Eigenschaften extrahieren
+                # Extract roof-surface-specific properties
                 lSurfaceInfo = {
                     "element_id": lElementId,
                     "element_type": lElementInfo.get("type", "unknown"),
-                    "roof_surface_area": 0,  # Wird von API gefüllt
-                    "roof_slope": 0,         # Wird von API gefüllt
-                    "roof_orientation": 0,   # Wird von API gefüllt
+                    "roof_surface_area": 0,  # Filled in by the API
+                    "roof_slope": 0,         # Filled in by the API
+                    "roof_orientation": 0,   # Filled in by the API
                     "is_roof_element": True
                 }
                 
                 lSurfaceDetails.append(lSurfaceInfo)
                 
             except Exception as e:
-                # Fallback für Elemente die keine Dach-Eigenschaften haben
+                # Fallback for elements without roof properties
                 lSurfaceDetails.append({
                     "element_id": lElementId,
                     "element_type": "unknown",
@@ -58,7 +58,7 @@ def handle_get_roof_surfaces(aParams: dict) -> dict:
         return {"status": "error", "message": f"get_roof_surfaces failed: {e}"}
 
 def handle_calculate_roof_area(aParams: dict) -> dict:
-    """Berechnet Dachflächen"""
+    """Calculates roof surface areas"""
     try:
         import roof_controller as rc
         
@@ -70,14 +70,14 @@ def handle_calculate_roof_area(aParams: dict) -> dict:
         # Cadwork API aufrufen
         lRoofAreaData = rc.calculate_roof_area(lRoofElementIds)
         
-        # Zusätzliche Berechnungen für Dachflächen
+        # Additional roof surface calculations
         lTotalGroundArea = 0
         lTotalSlopedArea = 0
         lElementAreas = []
         
         for lElementId in lRoofElementIds:
             try:
-                # Element-spezifische Flächenberechnungen
+                # Element-specific area calculations
                 lElementInfo = rc.get_element_info(lElementId)
                 lElementArea = rc.get_element_reference_face_area(lElementId)
                 
@@ -101,7 +101,7 @@ def handle_calculate_roof_area(aParams: dict) -> dict:
                     "area_mm2": 0
                 })
         
-        # Dachflächen-spezifische Berechnungen
+        # Roof-surface-specific calculations
         lRoofAreaResults = {
             "total_sloped_area_mm2": lTotalSlopedArea,
             "total_sloped_area_m2": lTotalSlopedArea / 1000000,

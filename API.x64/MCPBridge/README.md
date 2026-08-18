@@ -1,97 +1,96 @@
-# 📋 Manuelle Installation - Cadwork MCP Bridge Plugin
+# 📋 Manual installation — Cadwork MCP Bridge plugin
 
-## 🎯 Einfache Kopier-Anleitung
+## 🎯 Copy instructions
 
-### Schritt 1: Cadwork Plugin-Verzeichnis finden
-1. **Cadwork 3D** öffnen
-2. **Help → Info** klicken  
-3. **"Userprofile"** Ordner öffnen
-4. Zu **`3d\API.x64`** navigieren
+### Step 1: find the Cadwork plugin directory
+1. Open **Cadwork 3D**
+2. Click **Help → Info**
+3. Open the **"Userprofile"** folder
+4. Navigate to **`3d\API.x64`**
 
-**Typischer Pfad:**
+**Typical path:**
 ```
 C:\Users\Public\Documents\cadwork\userprofil_xx\3d\API.x64
 ```
 
-### Schritt 2: Plugin kopieren
-1. **Diesen kompletten `MCPBridge` Ordner** kopieren:
+### Step 2: copy the plugin
+1. Copy this **entire `MCPBridge` folder**:
 ```
 C:\cadworkMCP\API.x64\MCPBridge\
 ```
 
-2. **Einfügen** in Cadwork's API.x64 Verzeichnis:
+2. **Paste** it into Cadwork's API.x64 directory:
 ```
 [CADWORK_USERPROFILE]\3d\API.x64\MCPBridge\
 ```
 
-### Schritt 3: Struktur prüfen
-Nach dem Kopieren sollte die Struktur so aussehen:
+### Step 3: check the layout
+After copying, the structure should look like this:
 ```
 [CADWORK_USERPROFILE]\3d\API.x64\
 └── MCPBridge\
-    ├── MCPBridge.py          ← Hauptplugin
-    ├── bridge_server.py      ← Bridge Server  
-    ├── plugin_info.xml       ← Plugin Info
-    └── README.md             ← Diese Anleitung
+    ├── MCPBridge.py          ← the plugin itself (GUI)
+    ├── plugin_info.xml       ← plugin metadata
+    └── README.md             ← this guide
 ```
 
-## 🚀 Plugin verwenden
+The plugin does not contain the bridge code. It executes `C:\cadworkMCP\start.txt`, which in turn runs `C:\cadworkMCP\cadwork_bridge.py` — so the repository must stay at `C:\cadworkMCP`.
 
-### 1. Cadwork neu starten
-- **Cadwork 3D** schließen und neu öffnen
+## 🚀 Using the plugin
 
-### 2. Plugin aktivieren
-- **Window → Plugins** (Plugin-Leiste anzeigen)
-- **MCP Bridge** Button erscheint
-- Button **klicken** um Plugin zu starten
+### 1. Restart Cadwork
+- Close **Cadwork 3D** and open it again
 
-### 3. Bridge starten
-- **GUI öffnet sich** automatisch
-- **"Start Bridge"** Button klicken
-- Status zeigt **"Running"** an
-- **"Test Connection"** für Verbindungstest
+### 2. Activate the plugin
+- **Window → Plugins** (show the plugin bar)
+- The **MCP Bridge** button appears
+- **Click** the button to launch the plugin
 
-## 🔗 MCP Server verbinden
+### 3. Start the bridge
+- The **GUI opens** automatically
+- Click **"Start Bridge"**
+- The status switches to **"Running"**
 
-Nach erfolgreichem Plugin-Start:
+## 🔗 Connecting the MCP server
+
+Once the plugin has started the bridge, Claude Desktop launches the MCP server on its own (see the main [`README.md`](../../README.md)). To run it by hand for debugging:
 
 ```bash
 cd C:\cadworkMCP
 python main.py
 ```
 
-Jetzt können externe Tools (wie Claude) Cadwork steuern!
+External tools such as Claude can then drive Cadwork.
 
-## ⚙️ Plugin-Features
+## ⚙️ Plugin features
 
-- ✅ **Ein-Klick Bridge Start**
-- ✅ **Status-Monitoring** 
-- ✅ **Connection Testing**
-- ✅ **GUI-Kontrolle**
-- ✅ **Embedded Server**
+- ✅ **One-click bridge start**
+- ✅ **Status display**
+- ✅ **GUI control**
+- ✅ **Embedded server** (socket server on port 53002, inside Cadwork's Python interpreter)
 
 ## 🛠️ Troubleshooting
 
-### Plugin erscheint nicht
-- **Cadwork neu starten**
-- **Plugin-Leiste prüfen**: Window → Plugins  
-- **Ordnername prüfen**: Muss exakt `MCPBridge` heißen
+### The plugin does not appear
+- **Restart Cadwork**
+- **Check the plugin bar:** Window → Plugins
+- **Check the folder name:** it must be exactly `MCPBridge`
 
-### Bridge startet nicht
-- **Port 53002** frei? (andere Programme prüfen)
-- **Python-Pfade** korrekt?
-- **Cadwork Console** für Fehlermeldungen prüfen
+### The bridge does not start
+- Is **port 53002** free? (check for another running bridge)
+- Are the **Python paths** correct? The bridge expects `C:\cadworkMCP`
+- Check the **Cadwork console** for error messages
 
-### Verbindung fehlgeschlagen
-- **"Test Connection"** im Plugin verwenden
-- **Firewall-Einstellungen** prüfen
-- Nur **localhost/127.0.0.1** verwenden
+### The connection fails
+- Check your **firewall settings**
+- Use **localhost / 127.0.0.1** only
+- Note that "Stop Bridge" only clears the status flag; it does not release the socket. Restart Cadwork if the port stays occupied.
 
-## 🎯 Das wars!
+## 🎯 That's it
 
-**3 einfache Schritte:**
-1. **Ordner kopieren**
-2. **Plugin starten** 
-3. **Bridge aktivieren**
+**Three simple steps:**
+1. **Copy the folder**
+2. **Start the plugin**
+3. **Activate the bridge**
 
-Ihr Cadwork ist jetzt bereit für externe Tool-Integration! 🎉
+Your Cadwork installation is now ready for external tool integration. 🎉

@@ -693,7 +693,7 @@ def handle_rotate_length_axis_90(args: Dict[str, Any]) -> Dict[str, Any]:
         return {"status": "error", "message": f"Failed to rotate length axis: {e}"}
 
 def handle_get_element_type(aParams: dict) -> dict:
-    """Ruft Element-Typ ab"""
+    """Retrieves the element type"""
     try:
         import element_controller as ec
         
@@ -705,7 +705,7 @@ def handle_get_element_type(aParams: dict) -> dict:
         # Cadwork API aufrufen
         lElementType = ec.get_element_type(lElementId)
         
-        # Element-Typ als String zurückgeben
+        # Return the element type as a string
         lTypeNames = {
             0: "none",
             1: "beam", 
@@ -735,7 +735,7 @@ def handle_get_element_type(aParams: dict) -> dict:
         return {"status": "error", "message": f"get_element_type failed: {e}"}
 
 def handle_calculate_total_volume(aParams: dict) -> dict:
-    """Berechnet Gesamtvolumen einer Element-Liste"""
+    """Calculates the total volume of a list of elements"""
     try:
         import element_controller as ec
         
@@ -748,7 +748,7 @@ def handle_calculate_total_volume(aParams: dict) -> dict:
         lProcessedElements = []
         lFailedElements = []
         
-        # Volumen aller Elemente summieren
+        # Sum the volume of all elements
         for lElementId in lElementIds:
             try:
                 lVolume = ec.get_element_volume(lElementId)
@@ -760,7 +760,7 @@ def handle_calculate_total_volume(aParams: dict) -> dict:
             except Exception as e:
                 lFailedElements.append(lElementId)
         
-        # Einheiten-Konvertierung
+        # Unit conversion
         lTotalVolumeCm3 = lTotalVolumeMm3 / 1000.0  # mm³ → cm³
         lTotalVolumeDm3 = lTotalVolumeMm3 / 1000000.0  # mm³ → dm³ (Liter)
         lTotalVolumeM3 = lTotalVolumeMm3 / 1000000000.0  # mm³ → m³
@@ -782,7 +782,7 @@ def handle_calculate_total_volume(aParams: dict) -> dict:
         return {"status": "error", "message": f"calculate_total_volume failed: {e}"}
 
 def handle_calculate_total_weight(aParams: dict) -> dict:
-    """Berechnet Gesamtgewicht einer Element-Liste"""
+    """Calculates the total weight of a list of elements"""
     try:
         import element_controller as ec
         
@@ -795,7 +795,7 @@ def handle_calculate_total_weight(aParams: dict) -> dict:
         lProcessedElements = []
         lFailedElements = []
         
-        # Gewicht aller Elemente summieren
+        # Sum the weight of all elements
         for lElementId in lElementIds:
             try:
                 lWeight = ec.get_element_weight(lElementId)
@@ -807,7 +807,7 @@ def handle_calculate_total_weight(aParams: dict) -> dict:
             except Exception as e:
                 lFailedElements.append(lElementId)
         
-        # Einheiten-Konvertierung
+        # Unit conversion
         lTotalWeightG = lTotalWeightKg * 1000.0      # kg → g
         lTotalWeightT = lTotalWeightKg / 1000.0      # kg → t (Tonnen)
         

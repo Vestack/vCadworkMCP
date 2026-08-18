@@ -14,7 +14,7 @@ def to_point_3d(point_data):
         else:
             raise ValueError("Point must be a list/tuple of at least 3 numbers")
     except ImportError:
-        # Fallback wenn cadwork nicht verfügbar
+        # Fallback when cadwork is not available
         return point_data
 
 def point_3d_to_list(point):
@@ -512,7 +512,7 @@ def handle_create_polygon_beam(params: Dict[str, Any]) -> Dict[str, Any]:
         return {"status": "error", "message": f"Failed to create polygon beam: {e}"}
 
 def handle_get_elements_by_type(aParams: dict) -> dict:
-    """Findet alle Elemente eines bestimmten Typs"""
+    """Finds all elements of a given type"""
     try:
         import element_controller as ec
         
@@ -521,7 +521,7 @@ def handle_get_elements_by_type(aParams: dict) -> dict:
         if not lElementType or not isinstance(lElementType, str):
             return {"status": "error", "message": "element_type must be a non-empty string"}
         
-        # Typ-Mapping (String -> Cadwork API Nummer)
+        # Type mapping (string -> cadwork API number)
         lTypeMapping = {
             "beam": 1,
             "panel": 2, 
@@ -542,7 +542,7 @@ def handle_get_elements_by_type(aParams: dict) -> dict:
         
         lTypeId = lTypeMapping[lElementType]
         
-        # Alle Elemente des Typs finden
+        # Find all elements of this type
         lAllElements = ec.get_all_identifiable_element_ids()
         lFilteredElements = []
         
@@ -568,7 +568,7 @@ def handle_get_elements_by_type(aParams: dict) -> dict:
         return {"status": "error", "message": f"get_elements_by_type failed: {e}"}
 
 def handle_filter_elements_by_material(aParams: dict) -> dict:
-    """Filtert Elemente nach Material"""
+    """Filters elements by material"""
     try:
         import element_controller as ec
         import attribute_controller as ac
@@ -578,7 +578,7 @@ def handle_filter_elements_by_material(aParams: dict) -> dict:
         if not lMaterialName or not isinstance(lMaterialName, str):
             return {"status": "error", "message": "material_name must be a non-empty string"}
         
-        # Alle Elemente im Modell durchsuchen
+        # Scan all elements in the model
         lAllElements = ec.get_all_identifiable_element_ids()
         lFilteredElements = []
         
@@ -603,7 +603,7 @@ def handle_filter_elements_by_material(aParams: dict) -> dict:
         return {"status": "error", "message": f"filter_elements_by_material failed: {e}"}
 
 def handle_get_elements_in_group(aParams: dict) -> dict:
-    """Findet alle Elemente in einer bestimmten Gruppe"""
+    """Finds all elements in a given group"""
     try:
         import element_controller as ec
         import attribute_controller as ac
@@ -613,7 +613,7 @@ def handle_get_elements_in_group(aParams: dict) -> dict:
         if not lGroupName or not isinstance(lGroupName, str):
             return {"status": "error", "message": "group_name must be a non-empty string"}
         
-        # Alle Elemente im Modell durchsuchen
+        # Scan all elements in the model
         lAllElements = ec.get_all_identifiable_element_ids()
         lFilteredElements = []
         
@@ -638,7 +638,7 @@ def handle_get_elements_in_group(aParams: dict) -> dict:
         return {"status": "error", "message": f"get_elements_in_group failed: {e}"}
 
 def handle_get_element_count_by_type(aParams: dict) -> dict:
-    """Ermittelt Anzahl Elemente pro Typ"""
+    """Counts the elements per type"""
     try:
         import element_controller as ec
         
@@ -658,12 +658,12 @@ def handle_get_element_count_by_type(aParams: dict) -> dict:
             12: "architectural"
         }
         
-        # Alle Elemente im Modell
+        # All elements in the model
         lAllElements = ec.get_all_identifiable_element_ids()
         lTypeCounts = {}
         lTotalCount = 0
         
-        # Elemente nach Typ zählen
+        # Count the elements by type
         for lElementId in lAllElements:
             try:
                 lTypeId = ec.get_element_type(lElementId)
@@ -676,7 +676,7 @@ def handle_get_element_count_by_type(aParams: dict) -> dict:
             except Exception:
                 pass
         
-        # Prozentuale Verteilung berechnen
+        # Calculate the percentage distribution
         lTypePercentages = {}
         if lTotalCount > 0:
             for lTypeName, lCount in lTypeCounts.items():
@@ -696,18 +696,18 @@ def handle_get_element_count_by_type(aParams: dict) -> dict:
         return {"status": "error", "message": f"get_element_count_by_type failed: {e}"}
 
 def handle_get_material_statistics(aParams: dict) -> dict:
-    """Ermittelt Material-Statistiken des gesamten Modells"""
+    """Collects material statistics for the whole model"""
     try:
         import element_controller as ec
         import attribute_controller as ac
         
-        # Alle Elemente im Modell
+        # All elements in the model
         lAllElements = ec.get_all_identifiable_element_ids()
         lMaterialCounts = {}
         lTotalCount = 0
         lElementsWithoutMaterial = 0
         
-        # Materialien aller Elemente zählen
+        # Count the materials of all elements
         for lElementId in lAllElements:
             try:
                 lMaterial = ac.get_element_material_name(lElementId)
@@ -723,7 +723,7 @@ def handle_get_material_statistics(aParams: dict) -> dict:
                 lElementsWithoutMaterial += 1
                 lTotalCount += 1
         
-        # Prozentuale Verteilung berechnen
+        # Calculate the percentage distribution
         lMaterialPercentages = {}
         if lTotalCount > 0:
             for lMaterialName, lCount in lMaterialCounts.items():
@@ -750,18 +750,18 @@ def handle_get_material_statistics(aParams: dict) -> dict:
         return {"status": "error", "message": f"get_material_statistics failed: {e}"}
 
 def handle_get_group_statistics(aParams: dict) -> dict:
-    """Ermittelt Gruppen-Statistiken des gesamten Modells"""
+    """Collects group statistics for the whole model"""
     try:
         import element_controller as ec
         import attribute_controller as ac
         
-        # Alle Elemente im Modell
+        # All elements in the model
         lAllElements = ec.get_all_identifiable_element_ids()
         lGroupCounts = {}
         lTotalCount = 0
         lElementsWithoutGroup = 0
         
-        # Gruppen aller Elemente zählen
+        # Count the groups of all elements
         for lElementId in lAllElements:
             try:
                 lGroup = ac.get_group(lElementId)
@@ -777,13 +777,13 @@ def handle_get_group_statistics(aParams: dict) -> dict:
                 lElementsWithoutGroup += 1
                 lTotalCount += 1
         
-        # Prozentuale Verteilung berechnen
+        # Calculate the percentage distribution
         lGroupPercentages = {}
         if lTotalCount > 0:
             for lGroupName, lCount in lGroupCounts.items():
                 lGroupPercentages[lGroupName] = (lCount / lTotalCount) * 100.0
         
-        # Top Gruppen sortieren
+        # Sort the top groups
         lSortedGroups = sorted(lGroupCounts.items(), key=lambda x: x[1], reverse=True)
         
         return {
@@ -804,7 +804,7 @@ def handle_get_group_statistics(aParams: dict) -> dict:
         return {"status": "error", "message": f"get_group_statistics failed: {e}"}
 
 def handle_duplicate_elements(aParams: dict) -> dict:
-    """Dupliziert Elemente am gleichen Ort"""
+    """Duplicates elements in place"""
     try:
         import element_controller as ec
         
@@ -825,10 +825,10 @@ def handle_duplicate_elements(aParams: dict) -> dict:
         # Convert zero vector to point_3d
         lZeroVector = to_point_3d([0.0, 0.0, 0.0])
         
-        # Elemente einzeln duplizieren
+        # Duplicate the elements one by one
         for lElementId in lValidatedIds:
             try:
-                # Kopieren mit Null-Vektor (kein Versatz)
+                # Copy with a zero vector (no offset)
                 lCopyResult = ec.copy_elements([lElementId], lZeroVector)
                 if lCopyResult and len(lCopyResult) > 0:
                     lNewElementIds.extend(lCopyResult)
@@ -855,7 +855,7 @@ def handle_duplicate_elements(aParams: dict) -> dict:
 
 
 def handle_join_elements(aParams: dict) -> dict:
-    """Verbindet Elemente miteinander"""
+    """Joins elements together"""
     try:
         import element_controller as ec
         
@@ -870,7 +870,7 @@ def handle_join_elements(aParams: dict) -> dict:
         except ValueError as e:
             return {"status": "error", "message": str(e)}
         
-        # Cadwork API aufrufen - alle Elemente auf einmal joinen
+        # Call the cadwork API - join all elements at once
         try:
             ec.join_elements(lValidatedIds)
             
@@ -890,7 +890,7 @@ def handle_join_elements(aParams: dict) -> dict:
         return {"status": "error", "message": f"join_elements failed: {e}"}
 
 def handle_unjoin_elements(aParams: dict) -> dict:
-    """Trennt verbundene Elemente"""
+    """Separates joined elements"""
     try:
         import element_controller as ec
         
@@ -922,7 +922,7 @@ def handle_unjoin_elements(aParams: dict) -> dict:
 
 
 def handle_cut_corner_lap(aParams: dict) -> dict:
-    """Erstellt Eckblatt-Verbindung zwischen Elementen"""
+    """Creates a corner lap joint between elements"""
     try:
         import element_controller as ec
         
@@ -937,15 +937,15 @@ def handle_cut_corner_lap(aParams: dict) -> dict:
         lFailedElements = []
         
         try:
-            # Corner Lap Cut durchführen
-            # Typischerweise wird das erste Element als "Master" verwendet
+            # Perform the corner lap cut
+            # Typically the first element is used as the "master"
             lMasterElement = lElementIds[0]
             lTargetElements = lElementIds[1:]
             
             for lTargetElement in lTargetElements:
                 try:
-                    # Cadwork Cut-Operation ausführen
-                    # Die genauen Parameter hängen von der Cadwork API ab
+                    # Run the cadwork cut operation
+                    # The exact parameters depend on the cadwork API
                     if lCutParams:
                         ec.cut_corner_lap_with_params([lMasterElement, lTargetElement], lCutParams)
                     else:
@@ -975,7 +975,7 @@ def handle_cut_corner_lap(aParams: dict) -> dict:
         return {"status": "error", "message": f"cut_corner_lap failed: {e}"}
 
 def handle_cut_cross_lap(aParams: dict) -> dict:
-    """Erstellt Kreuzblatt-Verbindung zwischen Elementen"""
+    """Creates a cross lap joint between elements"""
     try:
         import element_controller as ec
         
@@ -990,18 +990,18 @@ def handle_cut_cross_lap(aParams: dict) -> dict:
         lFailedElements = []
         
         try:
-            # Cross Lap Cut durchführen  
-            # Bei Kreuzblatt werden beide Elemente geschnitten
+            # Perform the cross lap cut  
+            # A cross lap cuts both elements
             lElement1 = lElementIds[0]
             lElement2 = lElementIds[1]
             
-            # Für mehrere Elemente: paarweise verarbeiten
+            # For multiple elements: process them pairwise
             for i in range(0, len(lElementIds) - 1, 2):
                 try:
                     lElem1 = lElementIds[i]
                     lElem2 = lElementIds[i + 1] if i + 1 < len(lElementIds) else lElementIds[0]
                     
-                    # Cadwork Cut-Operation ausführen
+                    # Run the cadwork cut operation
                     if lCutParams:
                         ec.cut_cross_lap_with_params([lElem1, lElem2], lCutParams)
                     else:
@@ -1031,7 +1031,7 @@ def handle_cut_cross_lap(aParams: dict) -> dict:
 
 
 def handle_cut_half_lap(aParams: dict) -> dict:
-    """Erstellt Halbes Blatt-Verbindung zwischen Elementen"""
+    """Creates a half lap joint between elements"""
     try:
         import element_controller as ec
         
@@ -1051,8 +1051,8 @@ def handle_cut_half_lap(aParams: dict) -> dict:
             lCutDepthRatio = lCutParams.get("cut_depth_ratio", 0.5)
             lCutPosition = lCutParams.get("cut_position", "end")
             
-            # Half Lap Cut durchführen
-            # Das Master-Element wird zur Hälfte geschnitten, andere Elemente vollständig
+            # Perform the half lap cut
+            # The master element is cut halfway, the other elements all the way
             for lTargetElement in lElementIds:
                 if lTargetElement == lMasterElement:
                     continue
@@ -1094,7 +1094,7 @@ def handle_cut_half_lap(aParams: dict) -> dict:
         return {"status": "error", "message": f"cut_half_lap failed: {e}"}
 
 def handle_cut_double_tenon(aParams: dict) -> dict:
-    """Erstellt Doppelzapfen-Verbindung zwischen Elementen"""
+    """Creates a double tenon joint between elements"""
     try:
         import element_controller as ec
         
@@ -1114,11 +1114,11 @@ def handle_cut_double_tenon(aParams: dict) -> dict:
             lTenonSpacing = lCutParams.get("tenon_spacing", 60)
             lTenonDepth = lCutParams.get("tenon_depth", 50)
             
-            # Validation der Parameter
+            # Validate the parameters
             if lTenonElement not in lElementIds or lMortiseElement not in lElementIds:
                 return {"status": "error", "message": "Tenon and mortise elements must be from provided element IDs"}
             
-            # Cadwork Double Tenon Cut-Operation ausführen
+            # Run the cadwork double tenon cut operation
             lTenonParams = {
                 "width": lTenonWidth,
                 "height": lTenonHeight, 
@@ -1157,7 +1157,7 @@ def handle_cut_double_tenon(aParams: dict) -> dict:
 
 
 def handle_cut_scarf_joint(aParams: dict) -> dict:
-    """Erstellt Stoßverbindung zwischen Elementen"""
+    """Creates a scarf joint between elements"""
     try:
         import element_controller as ec
         
@@ -1167,7 +1167,7 @@ def handle_cut_scarf_joint(aParams: dict) -> dict:
         if len(lElementIds) != 2:
             return {"status": "error", "message": "Exactly 2 element IDs required for scarf joint"}
         
-        # Cadwork API aufrufen - Stoßverbindung
+        # Call the cadwork API - scarf joint
         try:
             # Scarf Joint Parameter extrahieren
             lScarfType = lCutParams.get("scarf_type", "plain_scarf")
@@ -1177,7 +1177,7 @@ def handle_cut_scarf_joint(aParams: dict) -> dict:
             lElement2 = lCutParams.get("element_2", lElementIds[1])
             lOverlapLength = lCutParams.get("overlap_length", 50)
             
-            # Validation der Parameter
+            # Validate the parameters
             if lElement1 not in lElementIds or lElement2 not in lElementIds:
                 return {"status": "error", "message": "Element references must be from provided element IDs"}
             
@@ -1185,7 +1185,7 @@ def handle_cut_scarf_joint(aParams: dict) -> dict:
             if lScarfLength <= 0 or lScarfAngle <= 0 or lScarfAngle >= 90:
                 return {"status": "error", "message": "Invalid scarf parameters: length > 0, angle between 0-90 degrees"}
             
-            # Cadwork Scarf Joint Cut-Operation ausführen
+            # Run the cadwork scarf joint cut operation
             lScarfParams = {
                 "type": lScarfType,
                 "length": lScarfLength,
@@ -1223,7 +1223,7 @@ def handle_cut_scarf_joint(aParams: dict) -> dict:
         return {"status": "error", "message": f"cut_scarf_joint failed: {e}"}
 
 def handle_cut_shoulder(aParams: dict) -> dict:
-    """Erstellt Schulterschnitt zwischen Elementen"""
+    """Creates a shoulder cut between elements"""
     try:
         import element_controller as ec
         
@@ -1252,7 +1252,7 @@ def handle_cut_shoulder(aParams: dict) -> dict:
             if lContactAngle <= 0 or lContactAngle > 180:
                 return {"status": "error", "message": "Contact angle must be between 0 and 180 degrees"}
             
-            # Shoulder Cut für alle Elemente ausführen (außer dem tragenden Element)
+            # Run the shoulder cut on all elements (except the supporting element)
             for lSupportedElement in lElementIds:
                 if lSupportedElement == lSupportingElement:
                     continue
@@ -1309,7 +1309,7 @@ def handle_cut_shoulder(aParams: dict) -> dict:
 
 
 def handle_create_auxiliary_beam_points(aParams: dict) -> dict:
-    """Erstellt Hilfs-Balkenelement mit Punkten"""
+    """Creates an auxiliary beam element from points"""
     try:
         import element_controller as ec
         
@@ -1321,7 +1321,7 @@ def handle_create_auxiliary_beam_points(aParams: dict) -> dict:
         if not lP1 or not lP2:
             return {"status": "error", "message": "p1 and p2 points are required"}
         
-        # Zu Cadwork Point3D konvertieren
+        # Convert to a cadwork point_3d
         lCwP1 = to_point_3d(lP1)
         lCwP2 = to_point_3d(lP2)
         lCwP3 = to_point_3d(lP3) if lP3 else None
@@ -1348,7 +1348,7 @@ def handle_create_auxiliary_beam_points(aParams: dict) -> dict:
         return {"status": "error", "message": f"create_auxiliary_beam_points failed: {e}"}
 
 def handle_convert_beam_to_panel(aParams: dict) -> dict:
-    """Konvertiert Balken zu Platten"""
+    """Converts beams into panels"""
     try:
         import element_controller as ec
         
@@ -1357,7 +1357,7 @@ def handle_convert_beam_to_panel(aParams: dict) -> dict:
         if not lElementIds:
             return {"status": "error", "message": "No element IDs provided"}
         
-        # Vor Konvertierung - Element-Informationen sammeln  
+        # Before conversion - collect element information  
         lBeforeInfo = []
         for lId in lElementIds:
             try:
@@ -1385,7 +1385,7 @@ def handle_convert_beam_to_panel(aParams: dict) -> dict:
 
 
 def handle_convert_panel_to_beam(aParams: dict) -> dict:
-    """Konvertiert Platten zu Balken"""
+    """Converts panels into beams"""
     try:
         import element_controller as ec
         
@@ -1394,7 +1394,7 @@ def handle_convert_panel_to_beam(aParams: dict) -> dict:
         if not lElementIds:
             return {"status": "error", "message": "No element IDs provided"}
         
-        # Vor Konvertierung - Element-Informationen sammeln  
+        # Before conversion - collect element information  
         lBeforeInfo = []
         for lId in lElementIds:
             try:
@@ -1422,7 +1422,7 @@ def handle_convert_panel_to_beam(aParams: dict) -> dict:
         return {"status": "error", "message": f"convert_panel_to_beam failed: {e}"}
 
 def handle_convert_auxiliary_to_beam(aParams: dict) -> dict:
-    """Konvertiert Auxiliary Elemente zu regulären Balken"""
+    """Converts auxiliary elements into regular beams"""
     try:
         import element_controller as ec
         
@@ -1431,7 +1431,7 @@ def handle_convert_auxiliary_to_beam(aParams: dict) -> dict:
         if not lElementIds:
             return {"status": "error", "message": "No element IDs provided"}
         
-        # Vor Konvertierung - Element-Informationen sammeln  
+        # Before conversion - collect element information  
         lBeforeInfo = []
         for lId in lElementIds:
             try:
@@ -1460,7 +1460,7 @@ def handle_convert_auxiliary_to_beam(aParams: dict) -> dict:
 
 
 def handle_create_auto_container_from_standard(aParams: dict) -> dict:
-    """Erstellt automatischen Container aus Standard-Elementen"""
+    """Creates an automatic container from standard elements"""
     try:
         import element_controller as ec
         
@@ -1473,7 +1473,7 @@ def handle_create_auto_container_from_standard(aParams: dict) -> dict:
         if not lContainerName:
             return {"status": "error", "message": "No container name provided"}
         
-        # Vor Container-Erstellung - Element-Informationen sammeln
+        # Before creating the container - collect element information
         lElementInfo = []
         for lId in lElementIds:
             try:
@@ -1505,7 +1505,7 @@ def handle_create_auto_container_from_standard(aParams: dict) -> dict:
         return {"status": "error", "message": f"create_auto_container_from_standard failed: {e}"}
 
 def handle_get_container_content_elements(aParams: dict) -> dict:
-    """Ruft Container-Inhalt ab"""
+    """Retrieves the container content"""
     try:
         import element_controller as ec
         
@@ -1517,14 +1517,14 @@ def handle_get_container_content_elements(aParams: dict) -> dict:
         # Cadwork API aufrufen
         lContentElements = ec.get_container_content_elements(lContainerId)
         
-        # Element-IDs in Liste konvertieren falls nötig
+        # Convert the element IDs to a list if needed
         if not isinstance(lContentElements, list):
             if lContentElements is None:
                 lContentElements = []
             else:
                 lContentElements = [lContentElements]
         
-        # Zusätzliche Informationen über enthaltene Elemente sammeln
+        # Collect additional information about the contained elements
         lElementDetails = []
         for lElementId in lContentElements:
             try:
