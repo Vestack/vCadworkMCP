@@ -1,12 +1,12 @@
 """
-Reparierter Visualization Handler mit ControllerManager
+Repaired visualization handler using ControllerManager
 """
 from typing import Dict, Any, List
 from .base_handler import BaseHandler, validate_element_ids
-from ..controller_manager import call_cadwork_function
+from ..cadwork_api import call_cadwork_function
 
 def handle_set_color(aParams: Dict[str, Any]) -> Dict[str, Any]:
-    """Setzt Farbe für Elemente"""
+    """Sets the color for elements"""
     try:
         lElementIds = validate_element_ids(aParams.get("element_ids", []))
         lColorId = aParams.get("color_id")
@@ -30,7 +30,7 @@ def handle_set_color(aParams: Dict[str, Any]) -> Dict[str, Any]:
         return {"status": "error", "message": f"set_color failed: {e}"}
 
 def handle_set_visibility(aParams: Dict[str, Any]) -> Dict[str, Any]:
-    """Setzt Sichtbarkeit für Elemente"""
+    """Sets the visibility for elements"""
     try:
         lElementIds = validate_element_ids(aParams.get("element_ids", []))
         lVisible = aParams.get("visible")
@@ -58,7 +58,7 @@ def handle_set_visibility(aParams: Dict[str, Any]) -> Dict[str, Any]:
         return {"status": "error", "message": f"set_visibility failed: {e}"}
 
 def handle_set_transparency(aParams: Dict[str, Any]) -> Dict[str, Any]:
-    """Setzt Transparenz für Elemente"""
+    """Sets the transparency for elements"""
     try:
         lElementIds = validate_element_ids(aParams.get("element_ids", []))
         lTransparency = aParams.get("transparency")
@@ -82,7 +82,7 @@ def handle_set_transparency(aParams: Dict[str, Any]) -> Dict[str, Any]:
         return {"status": "error", "message": f"set_transparency failed: {e}"}
 
 def handle_get_color(aParams: Dict[str, Any]) -> Dict[str, Any]:
-    """Ruft Farbe eines Elements ab"""
+    """Retrieves the color of an element"""
     try:
         lElementId = aParams.get("element_id")
         
@@ -92,7 +92,7 @@ def handle_get_color(aParams: Dict[str, Any]) -> Dict[str, Any]:
         # Verwende Controller Manager
         lColorId = call_cadwork_function('get_color', lElementId)
         
-        # Farb-Namen-Mapping (optional, basierend auf Cadwork Standard-Farbpalette)
+        # Color name mapping (optional, based on the Cadwork standard color palette)
         lColorNames = {
             1: "Black", 2: "White", 3: "Red", 4: "Green", 5: "Blue",
             6: "Yellow", 7: "Magenta", 8: "Cyan", 9: "Orange", 10: "Purple"
@@ -111,7 +111,7 @@ def handle_get_color(aParams: Dict[str, Any]) -> Dict[str, Any]:
         return {"status": "error", "message": f"get_color failed: {e}"}
 
 def handle_get_transparency(aParams: Dict[str, Any]) -> Dict[str, Any]:
-    """Ruft Transparenz eines Elements ab"""
+    """Retrieves the transparency of an element"""
     try:
         lElementId = aParams.get("element_id")
         
@@ -132,7 +132,7 @@ def handle_get_transparency(aParams: Dict[str, Any]) -> Dict[str, Any]:
         return {"status": "error", "message": f"get_transparency failed: {e}"}
 
 def handle_show_all_elements(aParams: Dict[str, Any]) -> Dict[str, Any]:
-    """Zeigt alle Elemente"""
+    """Shows all elements"""
     try:
         # Verwende Controller Manager
         result = call_cadwork_function('show_all_elements')
@@ -147,7 +147,7 @@ def handle_show_all_elements(aParams: Dict[str, Any]) -> Dict[str, Any]:
         return {"status": "error", "message": f"show_all_elements failed: {e}"}
 
 def handle_hide_all_elements(aParams: Dict[str, Any]) -> Dict[str, Any]:
-    """Versteckt alle Elemente"""
+    """Hides all elements"""
     try:
         # Verwende Controller Manager
         result = call_cadwork_function('hide_all_elements')
@@ -162,7 +162,7 @@ def handle_hide_all_elements(aParams: Dict[str, Any]) -> Dict[str, Any]:
         return {"status": "error", "message": f"hide_all_elements failed: {e}"}
 
 def handle_refresh_display(aParams: Dict[str, Any]) -> Dict[str, Any]:
-    """Aktualisiert die Anzeige"""
+    """Refreshes the display"""
     try:
         # Verwende Controller Manager
         result = call_cadwork_function('refresh_display')
@@ -177,7 +177,7 @@ def handle_refresh_display(aParams: Dict[str, Any]) -> Dict[str, Any]:
         return {"status": "error", "message": f"refresh_display failed: {e}"}
 
 def handle_get_visible_element_count(aParams: Dict[str, Any]) -> Dict[str, Any]:
-    """Zählt sichtbare Elemente"""
+    """Counts the visible elements"""
     try:
         # Verwende Controller Manager
         result = call_cadwork_function('get_visible_element_count')
@@ -191,9 +191,9 @@ def handle_get_visible_element_count(aParams: Dict[str, Any]) -> Dict[str, Any]:
     except Exception as e:
         return {"status": "error", "message": f"get_visible_element_count failed: {e}"}
 
-# Weitere Handler können hier hinzugefügt werden...
+# Further handlers can be added here...
 def handle_create_visual_filter(aParams: Dict[str, Any]) -> Dict[str, Any]:
-    """Erstellt visuellen Filter - Placeholder"""
+    """Creates a visual filter - Placeholder"""
     return {
         "status": "success",
         "message": "Visual filter created (placeholder)",
@@ -209,7 +209,7 @@ def handle_apply_color_scheme(aParams: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 def handle_create_assembly_animation(aParams: Dict[str, Any]) -> Dict[str, Any]:
-    """Erstellt Montage-Animation - Placeholder"""
+    """Creates an assembly animation - Placeholder"""
     return {
         "status": "success",
         "message": "Assembly animation created (placeholder)",
@@ -217,7 +217,7 @@ def handle_create_assembly_animation(aParams: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 def handle_set_camera_position(aParams: Dict[str, Any]) -> Dict[str, Any]:
-    """Setzt Kameraposition - Placeholder"""
+    """Sets the camera position - Placeholder"""
     return {
         "status": "success",
         "message": "Camera position set (placeholder)",
@@ -225,7 +225,7 @@ def handle_set_camera_position(aParams: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 def handle_create_walkthrough(aParams: Dict[str, Any]) -> Dict[str, Any]:
-    """Erstellt Walkthrough - Placeholder"""
+    """Creates a walkthrough - Placeholder"""
     return {
         "status": "success",
         "message": "Walkthrough created (placeholder)",

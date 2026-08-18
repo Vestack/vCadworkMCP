@@ -1,24 +1,24 @@
 # bridge/handlers/base_handler.py  
 """
-Basis-Handler mit einheitlicher Controller-Nutzung
+Base handler with unified controller usage
 """
 from typing import Dict, Any
-from ..controller_manager import call_cadwork_function
+from ..cadwork_api import call_cadwork_function
 
 class BaseHandler:
-    """Basis-Klasse für alle Handler"""
+    """Base class for all handlers"""
     
     @staticmethod
     def safe_call(function_name: str, *args, **kwargs) -> Dict[str, Any]:
         """
-        Sichere Controller-Aufrufe mit einheitlicher Fehlerbehandlung
+        Safe controller calls with unified error handling
         
         Args:
-            function_name: Name der Cadwork-Funktion
-            *args, **kwargs: Parameter für die Funktion
+            function_name: name of the cadwork function
+            *args, **kwargs: parameters for the function
             
         Returns:
-            Standardisierte Response mit status/message/data
+            Standardized response with status/message/data
         """
         try:
             result = call_cadwork_function(function_name, *args, **kwargs)

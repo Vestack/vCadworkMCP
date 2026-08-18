@@ -1,9 +1,9 @@
 """
-Reparierter Attribute Handler mit ControllerManager
+Repaired attribute handler using ControllerManager
 """
 from typing import Dict, Any, List
 from .base_handler import BaseHandler, validate_element_ids
-from ..controller_manager import call_cadwork_function
+from ..cadwork_api import call_cadwork_function
 
 def handle_get_standard_attributes(args: Dict[str, Any]) -> Dict[str, Any]:
     """Handle get standard attributes command"""
@@ -12,13 +12,13 @@ def handle_get_standard_attributes(args: Dict[str, Any]) -> Dict[str, Any]:
         
         results = {}
         
-        # Standard-Attribute definieren
+        # Define the standard attributes
         standard_attrs = ["name", "group", "subgroup", "comment"]
         
         for eid in element_ids:
             elem_attrs = {}
             
-            # Standard-Attribute abrufen
+            # Retrieve the standard attributes
             for attr_key in standard_attrs:
                 try:
                     value = call_cadwork_function(f'get_{attr_key}', eid)
@@ -26,7 +26,7 @@ def handle_get_standard_attributes(args: Dict[str, Any]) -> Dict[str, Any]:
                 except Exception:
                     elem_attrs[attr_key] = None
             
-            # Material abrufen
+            # Retrieve the material
             try:
                 material_name = call_cadwork_function('get_element_material_name', eid)
                 elem_attrs['material'] = material_name if material_name else None
@@ -51,7 +51,7 @@ def handle_get_user_attributes(args: Dict[str, Any]) -> Dict[str, Any]:
         if not isinstance(attr_numbers, list):
             raise ValueError("attribute_numbers must be a list")
         
-        # Validiere Attribut-Nummern
+        # Validate the attribute numbers
         attr_numbers = [int(num) for num in attr_numbers]
         if not all(num > 0 for num in attr_numbers):
             raise ValueError("Attribute numbers must be positive integers")
@@ -84,7 +84,7 @@ def handle_list_defined_user_attributes(args: Dict[str, Any]) -> Dict[str, Any]:
     try:
         defined_attributes = {}
         
-        # Prüfe Attribute 1-100
+        # Check attributes 1-100
         for i in range(1, 101):
             try:
                 name = call_cadwork_function('get_user_attribute_name', i)
@@ -96,7 +96,7 @@ def handle_list_defined_user_attributes(args: Dict[str, Any]) -> Dict[str, Any]:
                     "message": "Function get_user_attribute_name not available"
                 }
             except Exception:
-                continue  # Überspringe diese Attribut-Nummer
+                continue  # Skip this attribute number
         
         return {"status": "ok", "defined_attributes": defined_attributes}
         
@@ -152,7 +152,7 @@ def handle_set_material(args: Dict[str, Any]) -> Dict[str, Any]:
         return {"status": "error", "message": f"API error: {e}"}
 
 def handle_set_group(aParams: dict) -> dict:
-    """Setzt Gruppe für Elemente"""
+    """Sets the group for elements"""
     try:
         lElementIds = validate_element_ids(aParams.get("element_ids", []))
         lGroup = aParams.get("group")
@@ -176,7 +176,7 @@ def handle_set_group(aParams: dict) -> dict:
         return {"status": "error", "message": f"set_group failed: {e}"}
 
 def handle_set_comment(aParams: dict) -> dict:
-    """Setzt Kommentar für Elemente"""
+    """Sets the comment for elements"""
     try:
         lElementIds = validate_element_ids(aParams.get("element_ids", []))
         lComment = aParams.get("comment")
@@ -200,7 +200,7 @@ def handle_set_comment(aParams: dict) -> dict:
         return {"status": "error", "message": f"set_comment failed: {e}"}
 
 def handle_set_subgroup(aParams: dict) -> dict:
-    """Setzt Untergruppe für Elemente"""
+    """Sets the subgroup for elements"""
     try:
         lElementIds = validate_element_ids(aParams.get("element_ids", []))
         lSubgroup = aParams.get("subgroup")
@@ -254,7 +254,7 @@ def handle_set_user_attribute(args: Dict[str, Any]) -> Dict[str, Any]:
     except Exception as e:
         return {"status": "error", "message": f"set_user_attribute failed: {e}"}
 
-# Weitere Attribute-Handler können hier hinzugefügt werden...
+# Further attribute handlers can be added here...
 def handle_get_element_attribute_display_name(args: Dict[str, Any]) -> Dict[str, Any]:
     """Gets display name for user attribute"""
     try:
@@ -277,7 +277,7 @@ def handle_clear_user_attribute(args: Dict[str, Any]) -> Dict[str, Any]:
         element_ids = validate_element_ids(args.get("element_ids", []))
         attribute_number = int(args.get("attribute_number"))
         
-        # Lösche Attribut für alle Elemente
+        # Clear the attribute for all elements
         for eid in element_ids:
             call_cadwork_function('set_user_attribute', eid, attribute_number, "")
         
