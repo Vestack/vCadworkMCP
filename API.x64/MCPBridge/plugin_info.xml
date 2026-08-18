@@ -3,7 +3,7 @@
     <Version>1.0.0.0</Version>
     <Date>2025-01-15</Date>
     <Author>MCP Development Team</Author>
-    <n>
+    <Name>
         <Text language="German">MCP Bridge Control</Text>
         <Text language="English">MCP Bridge Control</Text>
         <Text language="French">Controle du Pont MCP</Text>
@@ -19,7 +19,7 @@
         <Text language="Portuguese">Controle da ponte MCP</Text>
         <Text language="Estonian">MCP silla kontroll</Text>
         <Text language="Japanese">MCPブリッジ制御</Text>
-    </n>
+    </Name>
     <Description>
         <Text language="German">
             <![CDATA[
