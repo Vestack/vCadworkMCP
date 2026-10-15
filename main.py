@@ -1472,6 +1472,33 @@ async def get_module_inventory(element_ids: Optional[List[int]] = None,
     return await vestack_ctrl.get_module_inventory(element_ids, active_only, id_source)
 
 
+@mcp.tool(
+    name="get_object_inventory",
+    description=(
+        "Lists the objects of each Vestack module - walls, slabs, roofs, parapets, "
+        "openings - with their envelopes in MILLIMETRES, in a frame local to each "
+        "module (origin at a bottom-floor corner, X along its longer side, Z up), "
+        "for comparison with the Revit model. Walls come from part subgroups "
+        "(M1-W5 = module 1, wall 5) and their MOB<section> body element; openings "
+        "are MEX joinery attached to the wall containing them. Without module_ids "
+        "it returns a summary per module (frame, counts, warnings); pass "
+        "module_ids=['M1'] for that module's objects, and element_detail="
+        "'envelope' or 'vertices' to also get each element in the module frame. "
+        "output_path writes the full inventory (every module, every object) as "
+        "JSON and still returns the summary. Reads attributes of the whole model "
+        "(about 1 min on a large building) and vertices only where needed. "
+        "Schema: vestack/OBJECT_INVENTORY.md."
+    )
+)
+async def get_object_inventory(element_ids: Optional[List[int]] = None,
+                               active_only: bool = False,
+                               module_ids: Optional[List[str]] = None,
+                               element_detail: str = "none",
+                               output_path: Optional[str] = None) -> Dict[str, Any]:
+    return await vestack_ctrl.get_object_inventory(element_ids, active_only, module_ids,
+                                                   element_detail, output_path)
+
+
 if __name__ == "__main__":
     import argparse
     logger = get_logger()

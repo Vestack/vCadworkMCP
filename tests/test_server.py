@@ -46,6 +46,11 @@ class ToolRegistration(unittest.TestCase):
         names = {tool.name for tool in asyncio.run(main.mcp.list_tools())}
         self.assertIn("get_module_inventory", names)
 
+    def test_the_object_inventory_tool_is_registered(self) -> None:
+        import main
+        names = {tool.name for tool in asyncio.run(main.mcp.list_tools())}
+        self.assertIn("get_object_inventory", names)
+
     def test_every_tool_has_a_description(self) -> None:
         import main
         undescribed = [t.name for t in asyncio.run(main.mcp.list_tools())
