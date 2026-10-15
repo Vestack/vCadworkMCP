@@ -9,7 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 1. **MCP server** (`main.py`) — runs outside Cadwork, launched by the MCP client (Claude Desktop) over stdio. Exposes 168 `@mcp.tool` definitions.
 2. **Bridge** (`cadwork_bridge.py` + `bridge/`) — runs *inside* Cadwork's embedded Python interpreter, started from the Cadwork plugin GUI. Owns a TCP socket server and is the only code allowed to touch the real cadwork API.
 
-They talk **unframed JSON over a raw TCP socket on `127.0.0.1:53002`**. There is no HTTP and no length header: the receiver keeps reading bytes until `json.loads` succeeds (`core/connection.py:_receive_response`, `cadwork_bridge.py:socket_server`).
+They talk **unframed JSON over a raw TCP socket on `127.0.0.1:53002`**. There is no HTTP and no length header. The MCP-side client reads the response to EOF and parses it once, so it relies on the bridge closing the connection after every response (`core/connection.py:_receive_response`); the bridge reads the request until `json.loads` succeeds (`cadwork_bridge.py:socket_server`).
 
 ```
 Claude Desktop --stdio--> main.py (@mcp.tool)
