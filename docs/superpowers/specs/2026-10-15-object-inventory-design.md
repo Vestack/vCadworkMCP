@@ -120,7 +120,7 @@ One schema for the response and the file. Lengths in millimetres, rounded to
 {
   "status": "ok",
   "schema": "vestack.object_inventory/1",
-  "source": {"file": "...", "cadwork_version": "...", "extracted_at": "2026-10-15T14:02:00+02:00"},
+  "source": {"file": "...", "extracted_at": "2026-10-15T14:02:00+02:00"},
   "modules": [{
     "module_id": "M1",
     "grouping_source": "subgroup",

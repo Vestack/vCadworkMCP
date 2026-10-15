@@ -64,7 +64,8 @@ and nothing is written. Before the scan, the tool checks that the directory of
 `output_path` exists (`output_path directory does not exist: <dir>` otherwise)
 without contacting the bridge. Every call, export or not, first pings the bridge
 with the default socket timeout (30 s) and returns the ping's error without
-scanning when it fails, typically while a Cadwork command is active. The path is resolved on the machine running the MCP server
+scanning when it fails, typically while a Cadwork command is active. The path is
+resolved on the machine running the MCP server
 (a relative path against that process's working directory).
 
 Without `output_path`, nothing is written.

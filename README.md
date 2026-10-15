@@ -125,7 +125,7 @@ Claude Desktop starts the MCP server itself when you chat with Claude. No manual
 ## 🎯 Tests
 
 ```bash
-.venv\Scripts\python -m unittest discover -s tests -t .   # 78 tests, no Cadwork needed
+.venv\Scripts\python -m unittest discover -s tests -t .   # 215 tests, no Cadwork needed
 ```
 
 The suite runs outside Cadwork by stubbing it: handler modules are replaced by

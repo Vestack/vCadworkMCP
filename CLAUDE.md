@@ -137,7 +137,7 @@ packages there.
 python -m venv .venv
 .venv\Scripts\python -m pip install -r requirements.txt
 
-.venv\Scripts\python -m unittest discover -s tests -t .   # 199 tests, no Cadwork needed
+.venv\Scripts\python -m unittest discover -s tests -t .   # 215 tests, no Cadwork needed
 .venv\Scripts\python -m unittest tests.test_module_inventory        # one module
 .venv\Scripts\python -m unittest tests.test_dispatcher.Discovery.test_the_real_handler_modules_expose_ping
 .venv\Scripts\python -m mypy .         # baseline: 13 errors in 4 files (all pre-existing)
@@ -202,16 +202,18 @@ listed in `CommandDispatcher.collisions`.
 
 Vestack-specific logic lives in `vestack/` and nothing generic depends on it. The
 generic code references it exactly twice: `EXTENSION_MODULES` in
-`bridge/dispatcher.py`, and the `get_module_inventory` tool plus its controller
-import in `main.py`. `vestack/README.md` documents the modular conventions (module
-id `M139` in a user attribute named "Module", dimensions derived from the bottom
-floor, open-side detection) and how to remove the package.
-The object inventory (`get_object_inventory`, schema in
-`vestack/OBJECT_INVENTORY.md`) is the Cadwork half of the Revit consistency
-check; `docs/superpowers/specs/2026-10-15-object-inventory-design.md` records
-the Vestack modelling conventions it relies on. Keep new domain logic
-there rather than in `bridge/handlers/`, and keep `vestack/module_inventory.py`
-free of Cadwork imports so it stays unit-testable.
+`bridge/dispatcher.py`, and in `main.py` the Vestack tools
+(`get_module_inventory`, `get_object_inventory`) plus their controller import.
+`vestack/README.md` documents the modular conventions (module id `M139` in a user
+attribute named "Module", dimensions derived from the bottom floor, open-side
+detection) and how to remove the package. The object inventory
+(`get_object_inventory`, schema in `vestack/OBJECT_INVENTORY.md`) is the Cadwork
+half of the Revit consistency check;
+`docs/superpowers/specs/2026-10-15-object-inventory-design.md` records the
+Vestack modelling conventions it relies on.
+
+Keep new domain logic in `vestack/` rather than in `bridge/handlers/`, and keep
+`vestack/module_inventory.py` free of Cadwork imports so it stays unit-testable.
 
 ## Conventions
 

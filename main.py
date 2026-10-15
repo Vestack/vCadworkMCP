@@ -33,7 +33,7 @@ from controllers.optimization_controller import OptimizationController
 from controllers.list_controller import ListController
 
 # Domain extension: Vestack modular construction. Remove this import, the
-# instance below, the tool at the end of this file and the vestack/ package to
+# instance below, the two tools at the end of this file and the vestack/ package to
 # return to a purely generic Cadwork MCP server.
 from vestack.mcp_controller import VestackController
 
@@ -1490,7 +1490,7 @@ async def get_module_inventory(element_ids: Optional[List[int]] = None,
         "so the returned summary carries per-type counts (geometry-grouped objects "
         "included) and module heights, and element_detail applies to the exported "
         "file too. A module named in module_ids keeps its objects in the response. "
-        "Reads attributes of the whole model (about 1 min on a large building) and "
+        "Reads attributes of the whole model (1 to 2 min on a large building) and "
         "vertices only where needed. Schema: vestack/OBJECT_INVENTORY.md."
     )
 )

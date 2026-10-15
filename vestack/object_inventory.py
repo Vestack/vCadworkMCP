@@ -191,7 +191,9 @@ def _bottom_floor(module: _Module) -> List[ObjectSnapshot]:
     """Elements making the module's bottom floor, possibly none.
 
     In order: slab-part elements hinted "bottom", else the lowest slab part
-    (elements hinted "top" left out), else the lowest loose slabs.
+    (elements hinted "top" left out), else loose slab-shaped elements anchored
+    on the largest panel starting within TOP_FLOOR_MIN_CLEARANCE_MM of the
+    lowest one: those starting below the anchor's top.
     """
     slab_parts = {oid: _with_vertices(els) for oid, els in _floor_parts(module).items()}
     slab_parts = {oid: els for oid, els in slab_parts.items() if els}

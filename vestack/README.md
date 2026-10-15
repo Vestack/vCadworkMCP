@@ -95,6 +95,6 @@ of detail. `OBJECT_INVENTORY.md` has the full contract.
 1. delete this package,
 2. remove `"vestack.bridge_handler"` from `EXTENSION_MODULES` in `bridge/dispatcher.py`,
 3. remove the `VestackController` import, its instance and the
-   `get_module_inventory` tool from `main.py`.
+   `get_module_inventory` and `get_object_inventory` tools from `main.py`.
 
 Nothing else references it.
