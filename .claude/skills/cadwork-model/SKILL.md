@@ -52,7 +52,10 @@ time.
    `element_detail="envelope"` (each element in the module frame), then the raw
    tools (`get_element_info`, `get_element_vertices`) on an object's
    `element_ids`, then ask the modeller to select them in Cadwork. Report the
-   module warnings and any `unattached_element_ids`; never drop them.
+   module warnings and any `unattached_element_ids`; never drop them. A summary
+   lists at most 200 of those ids: give `unattached_element_count`, and say so
+   when `unattached_element_ids_truncated` is true. Use `element_detail` on one
+   module at a time; larger element reads go through `output_path`.
    `output_path` writes the full inventory as JSON on the machine running the MCP
    server, and the call can take minutes on a large building.
 4. **Counts and statistics:** `get_element_count_by_type`, `get_group_statistics`,

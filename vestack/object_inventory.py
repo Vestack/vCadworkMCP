@@ -30,6 +30,9 @@ from .naming import (
 SCHEMA = "vestack.object_inventory/1"
 DETAIL_LEVELS: Tuple[str, ...] = ("none", "envelope", "vertices")
 SIDES: Tuple[str, ...] = ("-x", "+x", "-y", "+y")
+# Unattached ids listed in a summary, smallest first; unattached_element_count
+# gives the total.
+UNATTACHED_IDS_IN_SUMMARY = 200
 
 
 @dataclass
@@ -679,12 +682,19 @@ def build_object_inventory(snapshots: Sequence[ObjectSnapshot],
                 j.element_id for j in orphans_by_module.get(module_id, []))
         entries.append(entry)
 
+    # A summary goes back to the assistant: cap the ids it lists. A detail or an
+    # export lists them all.
+    unattached_ids = sorted(unattached)
+    shown = (unattached_ids if detail_all or detailed
+             else unattached_ids[:UNATTACHED_IDS_IN_SUMMARY])
     return {
         "status": "ok",
         "schema": SCHEMA,
         "source": dict(source or {}),
         "modules": entries,
-        "unattached_element_ids": sorted(unattached),
+        "unattached_element_count": len(unattached_ids),
+        "unattached_element_ids": shown,
+        "unattached_element_ids_truncated": len(shown) < len(unattached_ids),
         "processing_element_count": processing,
         "warnings": warnings,
     }

@@ -83,6 +83,45 @@ class Summary(unittest.TestCase):
         self.assertEqual(ids, ["M1", "M2", "M10"])
 
 
+class UnattachedIds(unittest.TestCase):
+    """A summary caps the unattached ids; detail and export list them all."""
+
+    def strays(self, count: int) -> List[ObjectSnapshot]:
+        # Ids given in reverse order: the cap must keep the smallest, sorted.
+        return [element(10000 + n, box(0, 0, 0, 10, 10, 10), name="Connecteur")
+                for n in reversed(range(count))]
+
+    def test_a_summary_keeps_the_first_200_sorted_ids(self) -> None:
+        inventory = build_object_inventory(module_m1() + self.strays(250))
+        self.assertEqual(inventory["unattached_element_count"], 250)
+        self.assertEqual(inventory["unattached_element_ids"],
+                         list(range(10000, 10200)))
+        self.assertTrue(inventory["unattached_element_ids_truncated"])
+
+    def test_a_summary_under_the_cap_lists_every_id(self) -> None:
+        inventory = build_object_inventory(module_m1() + self.strays(3))
+        self.assertEqual(inventory["unattached_element_count"], 3)
+        self.assertEqual(inventory["unattached_element_ids"], [10000, 10001, 10002])
+        self.assertFalse(inventory["unattached_element_ids_truncated"])
+
+    def test_a_detail_lists_every_id(self) -> None:
+        inventory = detail(module_m1() + self.strays(250))
+        self.assertEqual(inventory["unattached_element_count"], 250)
+        self.assertEqual(len(inventory["unattached_element_ids"]), 250)
+        self.assertFalse(inventory["unattached_element_ids_truncated"])
+
+    def test_an_export_lists_every_id(self) -> None:
+        inventory = build_object_inventory(module_m1() + self.strays(250), detail_all=True)
+        self.assertEqual(len(inventory["unattached_element_ids"]), 250)
+        self.assertFalse(inventory["unattached_element_ids_truncated"])
+
+    def test_the_count_is_present_with_nothing_unattached(self) -> None:
+        inventory = build_object_inventory(module_m1())
+        self.assertEqual(inventory["unattached_element_count"], 0)
+        self.assertEqual(inventory["unattached_element_ids"], [])
+        self.assertFalse(inventory["unattached_element_ids_truncated"])
+
+
 class Walls(unittest.TestCase):
     def test_wall_axis_thickness_and_height_come_from_the_body(self) -> None:
         wall = objects_by_id(detail(module_m1()))["M1-W1"]

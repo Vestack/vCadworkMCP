@@ -40,7 +40,9 @@ Reference output: `tests/data/object_inventory_golden.json`.
 | `schema` | `"vestack.object_inventory/1"`; bumped on any incompatible change |
 | `source` | `file` (path of the open model, empty if unavailable), `extracted_at` (ISO 8601 with offset, seconds) |
 | `modules` | one entry per module found, sorted by module number |
-| `unattached_element_ids` | elements with no module; joinery with no module, no readable geometry, or whose module has no frame |
+| `unattached_element_count` | number of unattached elements, always present |
+| `unattached_element_ids` | elements with no module; joinery with no module, no readable geometry, or whose module has no frame. Sorted. When no module is detailed and there is no export (no `module_ids`, no `detail_all`), only the first 200 ids are listed |
+| `unattached_element_ids_truncated` | `true` when `unattached_element_ids` lists fewer ids than `unattached_element_count`; always `false` in a detail or an export |
 | `processing_element_count` | processing elements (group `Usinage`), counted but never in an object |
 | `warnings` | e.g. `module M5 not found in the scanned elements` for a requested module |
 | `scanned_element_count`, `geometry_read_count`, `skipped_element_ids`, `attribute_numbers` | Cadwork side only: scan statistics |
@@ -72,7 +74,8 @@ differences:
 
 Because every module was read in detail, that summary carries the detail `counts`
 (geometry-grouped objects included) and, for a module with a frame, `frame.height`, and its modules have no
-`unclassified_element_count` or `unplaced_joinery_ids`.
+`unclassified_element_count` or `unplaced_joinery_ids`. It lists every unattached
+id, as the file does (`unattached_element_ids_truncated` is `false`).
 
 ## Module entry
 
