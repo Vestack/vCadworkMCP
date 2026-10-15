@@ -1,25 +1,29 @@
-"""Bridge adapter for the Vestack module inventory.
+"""Bridge adapter for the Vestack module and object inventories.
 
 The only Vestack code that talks to Cadwork. It reads what the model holds, turns
-it into ElementSnapshot values, and hands them to the pure logic in
-module_inventory.py. Cadwork modules are imported inside the functions, by their
+it into ElementSnapshot or ObjectSnapshot values, and hands them to the pure
+logic in module_inventory.py and object_inventory.py. Cadwork modules are imported inside the functions, by their
 bare names, as every other bridge handler does: at module level they would make
 this file unimportable outside Cadwork.
 
-The dispatcher discovers `handle_get_module_inventory` through the usual
-`handle_<operation>` convention, via bridge.dispatcher.EXTENSION_MODULES.
+The dispatcher discovers `handle_get_module_inventory` and
+`handle_get_object_inventory` through the usual `handle_<operation>` convention,
+via bridge.dispatcher.EXTENSION_MODULES.
 """
 import unicodedata
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
+from datetime import datetime
+from typing import Any, Callable, Collection, Dict, List, Optional, Sequence, Tuple
 
 from . import conventions as cv
 from .module_inventory import BBox, ElementSnapshot, build_inventory
+from .object_inventory import ObjectSnapshot, build_object_inventory, geometry_needed
 
 # Which Cadwork user attribute plays which role, matched on the attribute name.
 ATTRIBUTE_ROLES: Dict[str, Tuple[str, ...]] = {
     "module": cv.MODULE_ATTRIBUTE_NAMES,
     "building": cv.BUILDING_ATTRIBUTE_NAMES,
     "level": cv.LEVEL_ATTRIBUTE_NAMES,
+    "complex": cv.COMPLEX_ATTRIBUTE_NAMES,
 }
 
 
@@ -180,4 +184,112 @@ def handle_get_module_inventory(args: Dict[str, Any]) -> Dict[str, Any]:
         return {
             "status": "error",
             "message": f"get_module_inventory failed: {type(exc).__name__}: {exc}",
+        }
+
+
+# --- object inventory ------------------------------------------------------
+
+def read_object_attributes(element_ids: Sequence[int],
+                           attribute_numbers: Dict[str, int]) -> List[ObjectSnapshot]:
+    """First pass: names, groups, subgroups, Module and Complexe, no geometry.
+
+    Cheap compared with vertices (about 1 ms per element on Cadwork 2026), so it
+    runs over every scanned element to find the modules and their parts.
+    """
+    import attribute_controller as ac
+
+    module_number = attribute_numbers.get("module")
+    complex_number = attribute_numbers.get("complex")
+
+    def user_attribute(number: Optional[int], element_id: int) -> str:
+        if number is None:
+            return ""
+        return _safe_str(lambda eid: ac.get_user_attribute(eid, number), element_id)
+
+    return [ObjectSnapshot(element_id=element_id,
+                           name=_safe_str(ac.get_name, element_id),
+                           group=_safe_str(ac.get_group, element_id),
+                           subgroup=_safe_str(ac.get_subgroup, element_id),
+                           module_attribute=user_attribute(module_number, element_id),
+                           complex_code=user_attribute(complex_number, element_id))
+            for element_id in element_ids]
+
+
+def read_object_geometry(snapshots: Sequence[ObjectSnapshot], needed: Collection[int],
+                         with_material: bool) -> List[int]:
+    """Second pass: vertices (and material) of the elements that need them.
+
+    Fills the snapshots in place. Returns the ids whose geometry could not be read.
+    """
+    import attribute_controller as ac
+    import geometry_controller as gc
+
+    skipped: List[int] = []
+    for snapshot in snapshots:
+        if snapshot.element_id not in needed:
+            continue
+        try:
+            vertices = tuple(_coordinates(v) for v in
+                             (gc.get_element_vertices(snapshot.element_id) or []))
+        except Exception:
+            vertices = ()
+        if not vertices:
+            skipped.append(snapshot.element_id)
+            continue
+        snapshot.vertices = vertices
+        if with_material:
+            snapshot.material = _safe_str(ac.get_element_material_name, snapshot.element_id)
+    return skipped
+
+
+def _source() -> Dict[str, Any]:
+    """Provenance of the inventory: the open file and the extraction time."""
+    try:
+        import utility_controller as uc
+        path = str(uc.get_3d_file_path() or "")
+    except Exception:
+        path = ""
+    return {"file": path,
+            "extracted_at": datetime.now().astimezone().isoformat(timespec="seconds")}
+
+
+def handle_get_object_inventory(args: Dict[str, Any]) -> Dict[str, Any]:
+    """Walls, slabs, roofs and openings per module, in each module's own frame.
+
+    Args (all optional):
+        element_ids / active_only: restrict the scan, as for get_module_inventory.
+        module_ids: modules to detail; the others are summarised.
+        detail_all: detail every module (the controller sets it for file export).
+        element_detail: "none", "envelope" or "vertices", for detailed modules.
+
+    Attributes are read for every scanned element, vertices only where the
+    inventory needs them (see object_inventory.geometry_needed).
+    """
+    try:
+        element_ids = _element_ids_to_scan(args)
+        module_ids = [str(m) for m in (args.get("module_ids") or [])]
+        detail_all = bool(args.get("detail_all"))
+        element_detail = str(args.get("element_detail") or "none")
+
+        attribute_numbers = resolve_attribute_numbers()
+        snapshots = read_object_attributes(element_ids, attribute_numbers)
+        needed = geometry_needed(snapshots, module_ids, detail_all)
+        skipped = read_object_geometry(snapshots, needed,
+                                       with_material=element_detail != "none")
+
+        inventory = build_object_inventory(snapshots, module_ids, detail_all,
+                                           element_detail, _source())
+        inventory.update({
+            "scanned_element_count": len(snapshots),
+            "geometry_read_count": len(needed) - len(skipped),
+            "skipped_element_ids": sorted(skipped),
+            "attribute_numbers": attribute_numbers,
+        })
+        return inventory
+    except ValueError as exc:
+        return {"status": "error", "message": f"get_object_inventory: {exc}"}
+    except Exception as exc:
+        return {
+            "status": "error",
+            "message": f"get_object_inventory failed: {type(exc).__name__}: {exc}",
         }
