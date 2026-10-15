@@ -36,7 +36,7 @@ Reference output: `tests/data/object_inventory_golden.json`.
 
 | Key | Meaning |
 |---|---|
-| `status` | `"ok"`, or `"error"` with a `message`: the scan failed, `element_detail` is not `none`, `envelope` or `vertices`, or (MCP tool only) the export file could not be written |
+| `status` | `"ok"`, or `"error"` with a `message`: the scan failed, `element_detail` is not `none`, `envelope` or `vertices`, or (MCP tool only) the bridge did not answer the `ping` sent before the scan, the `output_path` directory does not exist, or the export file could not be written |
 | `schema` | `"vestack.object_inventory/1"`; bumped on any incompatible change |
 | `source` | `file` (path of the open model, empty if unavailable), `extracted_at` (ISO 8601 with offset, seconds) |
 | `modules` | one entry per module found, sorted by module number |
@@ -60,7 +60,11 @@ UTF-8, indented by one space, written atomically: a temporary file in the target
 directory, then `os.replace`. When the write fails, the tool returns
 `status: "error"` with a message and leaves no partial file; a file already at that
 path stays as it was. When the scan itself fails, the error response is returned
-and nothing is written. The path is resolved on the machine running the MCP server
+and nothing is written. Before the scan, the tool checks that the directory of
+`output_path` exists (`output_path directory does not exist: <dir>` otherwise)
+without contacting the bridge. Every call, export or not, first pings the bridge
+with the default socket timeout (30 s) and returns the ping's error without
+scanning when it fails, typically while a Cadwork command is active. The path is resolved on the machine running the MCP server
 (a relative path against that process's working directory).
 
 Without `output_path`, nothing is written.

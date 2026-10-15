@@ -1,13 +1,15 @@
 """Tests for the MCP-side object inventory: arguments, timeout, file export.
 
-The socket is replaced by a stub of BaseController.send_command, fed with a real
-inventory built from the fixture module.
+The socket is replaced by a stub of BaseController.send_command: it answers
+"ping" with {"status": "ok"} and "get_object_inventory" with a real inventory
+built from the fixture module.
 """
 import asyncio
 import json
 import os
 import shutil
 import tempfile
+import threading
 import unittest
 from typing import Any, Dict, List, Optional, Tuple
 from unittest.mock import patch
@@ -19,11 +21,19 @@ from vestack.object_inventory import build_object_inventory
 Call = Tuple[str, Dict[str, Any], Optional[float]]
 
 
-def run(calls: List[Call], **kwargs: Any) -> Dict[str, Any]:
+PONG: Dict[str, Any] = {"status": "ok"}
+
+
+def run(calls: List[Call], ping: Optional[Dict[str, Any]] = None,
+        threads: Optional[List[int]] = None, **kwargs: Any) -> Dict[str, Any]:
     def fake_send(self: Any, operation: str, args: Optional[Dict[str, Any]] = None,
                   timeout: Optional[float] = None) -> Dict[str, Any]:
         args = args or {}
         calls.append((operation, args, timeout))
+        if threads is not None:
+            threads.append(threading.get_ident())
+        if operation == "ping":
+            return PONG if ping is None else ping
         return build_object_inventory(module_m1(), module_ids=args.get("module_ids"),
                                       detail_all=bool(args.get("detail_all")),
                                       element_detail=args.get("element_detail", "none"))
@@ -32,11 +42,19 @@ def run(calls: List[Call], **kwargs: Any) -> Dict[str, Any]:
         return asyncio.run(VestackController().get_object_inventory(**kwargs))
 
 
+def inventory_call(calls: List[Call]) -> Call:
+    """The get_object_inventory call, which follows the ping."""
+    operations = [c[0] for c in calls]
+    if operations != ["ping", "get_object_inventory"]:
+        raise AssertionError(f"expected a ping then the inventory, got {operations}")
+    return calls[1]
+
+
 class Arguments(unittest.TestCase):
     def test_sends_the_operation_with_a_long_timeout(self) -> None:
         calls: List[Call] = []
         run(calls, module_ids=["M1"])
-        operation, args, timeout = calls[0]
+        operation, args, timeout = inventory_call(calls)
         self.assertEqual(operation, "get_object_inventory")
         self.assertEqual(args, {"element_detail": "none", "module_ids": ["M1"]})
         self.assertEqual(timeout, OBJECT_INVENTORY_TIMEOUT_S)
@@ -50,8 +68,40 @@ class Arguments(unittest.TestCase):
     def test_without_output_path_nothing_is_written_and_detail_all_is_not_asked(self) -> None:
         calls: List[Call] = []
         response = run(calls)
-        self.assertNotIn("detail_all", calls[0][1])
+        self.assertNotIn("detail_all", inventory_call(calls)[1])
         self.assertNotIn("output_path", response)
+
+
+class Preflight(unittest.TestCase):
+    """Quick checks before the long call, which can take minutes."""
+
+    def test_the_bridge_is_pinged_with_the_default_timeout_first(self) -> None:
+        calls: List[Call] = []
+        run(calls)
+        self.assertEqual(calls[0], ("ping", {}, None))
+
+    def test_a_failing_ping_stops_before_the_inventory_is_asked(self) -> None:
+        calls: List[Call] = []
+        failure = {"status": "error", "message": "Operation timed out: press Escape"}
+        response = run(calls, ping=failure)
+        self.assertEqual(response, failure)
+        self.assertEqual([c[0] for c in calls], ["ping"])
+
+    def test_a_missing_output_directory_is_refused_before_contacting_the_bridge(self) -> None:
+        directory = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, directory, True)
+        missing = os.path.join(directory, "no-such-dir")
+        calls: List[Call] = []
+        response = run(calls, output_path=os.path.join(missing, "inventory.json"))
+        self.assertEqual(response, {"status": "error", "message":
+                                    f"output_path directory does not exist: {missing}"})
+        self.assertEqual(calls, [])
+
+    def test_the_socket_calls_run_off_the_event_loop_thread(self) -> None:
+        threads: List[int] = []
+        run([], threads=threads)
+        self.assertEqual(len(threads), 2)
+        self.assertNotIn(threading.get_ident(), threads)
 
 
 class FileExport(unittest.TestCase):
@@ -63,7 +113,7 @@ class FileExport(unittest.TestCase):
     def test_the_file_holds_every_module_in_detail(self) -> None:
         calls: List[Call] = []
         response = run(calls, output_path=self.path)
-        self.assertTrue(calls[0][1]["detail_all"])
+        self.assertTrue(inventory_call(calls)[1]["detail_all"])
         with open(self.path, encoding="utf-8") as stream:
             written = json.load(stream)
         self.assertIn("objects", written["modules"][0])

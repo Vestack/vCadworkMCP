@@ -4,6 +4,7 @@ Mirrors the generic controllers in controllers/: validate the arguments, then se
 one command over the socket to the bridge. The dependency runs one way only —
 Vestack builds on the generic core, the core knows nothing about Vestack.
 """
+import asyncio
 import json
 import os
 import tempfile
@@ -92,9 +93,21 @@ class VestackController(BaseController):
             args["module_ids"] = [str(m) for m in module_ids]
         if output_path:
             args["detail_all"] = True
+            directory = os.path.dirname(os.path.abspath(output_path))
+            if not os.path.isdir(directory):
+                return {"status": "error",
+                        "message": f"output_path directory does not exist: {directory}"}
 
-        response = self.send_command("get_object_inventory", args,
-                                     timeout=OBJECT_INVENTORY_TIMEOUT_S)
+        # The scan takes minutes: check the bridge answers at all first, so that
+        # an active Cadwork command is reported after the default timeout, not
+        # after OBJECT_INVENTORY_TIMEOUT_S. Socket calls block, so they run in a
+        # worker thread and leave the MCP event loop free.
+        ping = await asyncio.to_thread(self.send_command, "ping")
+        if ping.get("status") != "ok":
+            return ping
+
+        response = await asyncio.to_thread(self.send_command, "get_object_inventory", args,
+                                           timeout=OBJECT_INVENTORY_TIMEOUT_S)
         if response.get("status") != "ok" or not output_path:
             return response
 
