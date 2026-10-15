@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "cadwork": {
-      "command": "python",
+      "command": "PATH-TO-YOUR-CHECKOUT/.venv/Scripts/python.exe",
       "args": [
         "PATH-TO-YOUR-CHECKOUT/main.py"
       ],

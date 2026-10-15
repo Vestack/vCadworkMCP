@@ -134,22 +134,28 @@ python -m venv .venv
 .venv\Scripts\python main.py --transport http --port 8001
 ```
 
-**The mypy baseline depends on the `cwapi3d` version, and this trips people up.**
-Those stubs define the Cadwork API that the handlers are checked against, so the
-pin must match the Cadwork version you target. Note this machine carries two
-installations: v30 from 2024, and 33.0 "2026 BETA" in `EXE_2026` with its own
-`userprofil_2026`. The pin targets v30, for which the handlers check clean; PyPI
-has no 33.x stubs. Cadwork's embedded interpreter for 2026 is **Python 3.14**
-(`EXE_2026/Pclib.x64/python314`), so bridge-side code runs there, not on the 3.12
-that `mypy.ini` declares. Against the
-Cadwork 32 stubs the same, correct code reports 97 errors instead of 13, 56 of
-them "module has no attribute". Deliberately installing the next major turns that
-into an upgrade checklist:
+**The mypy baseline depends on the `cwapi3d` version.** The stubs define the
+Cadwork API the handlers are checked against, so the pin must match the Cadwork
+version you target:
+
+- **v30 (2024)**: what `cwapi3d==30.693.0` pins. Handlers check clean (13 errors,
+  all pre-existing).
+- **33.0 "2026 BETA"**, in `EXE_2026` with its own `userprofil_2026`: no 33.x
+  stubs on PyPI. Its embedded interpreter is **Python 3.14**
+  (`EXE_2026/Pclib.x64/python314`), so bridge-side code runs there, not on the
+  3.12 that `mypy.ini` declares.
+- **32.x as an upgrade checklist**: the same code reports 97 errors, 56 of them
+  "module has no attribute", i.e. what Cadwork 32 renamed or removed.
 
 ```powershell
 .venv\Scripts\python -m pip install "cwapi3d==32.443.10"
-.venv\Scripts\python -m mypy .    # what Cadwork 32 renamed or removed
+.venv\Scripts\python -m mypy .    # then reinstall the pin from requirements.txt
 ```
+
+**Wiring Claude Desktop.** `claude_desktop_config.json` is a template: replace
+`PATH-TO-YOUR-CHECKOUT` with the checkout path. Its `command` points at the
+virtualenv's interpreter; a bare `python` would run the server on the global
+Python, without the pinned dependencies.
 
 The suite runs **outside Cadwork** by stubbing it: `tests/stub_handlers*.py` stand in
 for handler modules, and the Vestack adapter tests inject fake
