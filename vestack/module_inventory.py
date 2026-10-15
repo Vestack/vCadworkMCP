@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from . import conventions as cv
+from .naming import parse_module_id
 
 # (x_min, y_min, z_min, x_max, y_max, z_max), in millimetres.
 BBox = Tuple[float, float, float, float, float, float]
@@ -50,9 +51,8 @@ def field_value(snapshot: ElementSnapshot, source: str) -> str:
 
 
 def extract_module_id(value: str) -> Optional[str]:
-    """Pull an "M139"-style module id out of a field value."""
-    match = cv.MODULE_ID_PATTERN.search(value or "")
-    return match.group(0) if match else None
+    """Pull a module id out of a field value, in canonical form ("M001" -> "M1")."""
+    return parse_module_id(value)
 
 
 def candidate_id_sources(snapshots: Sequence[ElementSnapshot]) -> List[str]:

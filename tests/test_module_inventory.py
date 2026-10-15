@@ -110,7 +110,7 @@ class ModuleDimensions(unittest.TestCase):
     def test_module_id_and_source_are_reported(self) -> None:
         inventory = build_inventory(closed_module("M042"))
         self.assertEqual(inventory["id_source"], "subgroup")
-        self.assertEqual(only(inventory)["module_id"], "M042")
+        self.assertEqual(only(inventory)["module_id"], "M42")
 
 
 class ElementRoles(unittest.TestCase):
@@ -169,7 +169,7 @@ class SeveralModules(unittest.TestCase):
     def test_modules_are_sorted_by_id(self) -> None:
         snaps = closed_module("M002", first_id=1) + closed_module("M001", first_id=100)
         inventory = build_inventory(snaps)
-        self.assertEqual([m["module_id"] for m in inventory["modules"]], ["M001", "M002"])
+        self.assertEqual([m["module_id"] for m in inventory["modules"]], ["M1", "M2"])
 
     def test_module_count_and_total_footprint_are_reported(self) -> None:
         snaps = closed_module("M001", first_id=1) + closed_module("M002", first_id=100)

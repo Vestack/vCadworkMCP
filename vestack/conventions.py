@@ -5,13 +5,16 @@ rather than the logic in module_inventory.py, and see README.md for what each
 value means in practice. All lengths are millimetres, Cadwork's native unit.
 """
 import re
-from typing import Pattern, Tuple
+from typing import Dict, Pattern, Tuple
 
 # --- Module identity -------------------------------------------------------
 
-# A module id looks like "M139": the letter M followed by exactly three digits.
-# Matched anywhere inside a field value, so "Module M139" is recognised too.
-MODULE_ID_PATTERN: Pattern[str] = re.compile(r"\bM\d{3}\b")
+# A module id is the letter M, then 1 to 4 digits, then the end of the text or a
+# separator ("-", "_", space). Observed: M1, M17, M001, M15_W1, M139. Leading
+# zeros are dropped when normalising, so M001 and M1 are the same module. A digit
+# must follow the M, which keeps labels such as "Module standard R+1" out.
+MODULE_ID_PATTERN: Pattern[str] = re.compile(
+    r"(?<![A-Za-z0-9])M(\d{1,4})(?=$|[-_ ])", re.IGNORECASE)
 
 # Cadwork user attributes carrying the module context. Matched against the
 # attribute *name* (case- and accent-insensitive, substring match) rather than
@@ -58,3 +61,57 @@ MIN_SIDE_COVERAGE: float = 0.5
 # footprint. Well below 1.0 means the floor is rotated in plan or not
 # rectangular, so its bounding box overstates the module's dimensions.
 MIN_PLAN_AREA_RATIO: float = 0.8
+
+# --- Part subgroups (object inventory) --------------------------------------
+
+# Prefix of a part subgroup such as "M1-W5" -> the object it makes. Read off
+# the model 250513_AUX_STR_EXE_IndB.3d: W and F stated by the modeller, the
+# others inferred from groups, element names and the Complexe attribute. Any
+# other prefix ("Poteaux", "Porteuses", "fourrure") makes an "other" object.
+PART_TYPES: Dict[str, str] = {
+    "W": "wall",
+    "F": "slab",
+    "TF": "roof",      # toiture froide
+    "C": "roof",       # caisson de toiture froide
+    "T": "roof",       # toiture du module de couronnement
+    "A": "parapet",    # acrotere
+}
+
+# "<module id><separator><letters><number?>", e.g. M1-W5, M16-TF0, M8-Poteaux.
+PART_SUBGROUP_PATTERN: Pattern[str] = re.compile(
+    r"^\s*M(\d{1,4})[-_ ]([A-Za-z]+)(\d*)\s*$", re.IGNORECASE)
+
+# A part subgroup missing its module, e.g. "W1". Known prefixes only, so that
+# descriptive subgroups such as "Pliages" are not mistaken for parts.
+BARE_PART_PATTERN: Pattern[str] = re.compile(r"^\s*(TF|W|F|C|T|A)(\d+)\s*$")
+
+# The element carrying a wall's envelope is named after the wall type: "MOB"
+# (mur ossature bois) followed by the stud section in mm, e.g. MOB200.
+WALL_BODY_NAME_PATTERN: Pattern[str] = re.compile(r"^\s*MOB\s*(\d+)\s*$", re.IGNORECASE)
+
+# How far the union of a wall's elements may exceed its body before a warning.
+WALL_BODY_TOLERANCE_MM: float = 20.0
+
+# Joinery (openings): "MEX type A", "MEX type B", "MEX type D", "MEX couloir".
+# MEX accessories (Joue, Bavette, Larmier, Habillage) do not match.
+JOINERY_NAME_PATTERN: Pattern[str] = re.compile(
+    r"^\s*MEX\s+(type\b|couloir\b)", re.IGNORECASE)
+
+# How far outside a wall body a joinery centre may lie and still belong to it.
+JOINERY_CENTRE_TOLERANCE_MM: float = 50.0
+
+# Groups whose elements are processings (drillings, notches): no envelope.
+PROCESSING_GROUPS: Tuple[str, ...] = ("usinage",)
+
+# Floor level hints, from the group (lower-cased) or the Complexe code.
+BOTTOM_FLOOR_GROUPS: Tuple[str, ...] = ("plancher bas",)
+TOP_FLOOR_GROUPS: Tuple[str, ...] = ("plancher haut",)
+BOTTOM_FLOOR_COMPLEX_PREFIX: str = "PB-"
+TOP_FLOOR_COMPLEX_PREFIX: str = "PH-"
+
+# The Cadwork user attribute holding the Complexe code, matched by name.
+COMPLEX_ATTRIBUTE_NAMES: Tuple[str, ...] = ("complexe", "complex")
+
+# Geometric fallback: vertical elements whose mid-planes lie within this
+# distance of each other form one interior wall.
+INTERIOR_WALL_PLANE_TOLERANCE_MM: float = 100.0
