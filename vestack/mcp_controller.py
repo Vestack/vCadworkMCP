@@ -123,7 +123,7 @@ class VestackController(BaseController):
             return response
 
         try:
-            written = write_inventory_file(response, output_path)
+            written = await asyncio.to_thread(write_inventory_file, response, output_path)
         except (OSError, TypeError, ValueError) as exc:
             return {"status": "error",
                     "message": f"could not write the inventory to {output_path}: {exc}"}

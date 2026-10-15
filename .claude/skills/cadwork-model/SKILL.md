@@ -46,8 +46,8 @@ time.
      dimensions are overstated. Pass the warning on; never quietly drop it.
    - `skipped_element_ids` — no readable geometry, excluded from every count.
 3. **Objects, to compare with Revit:** `get_object_inventory` without
-   `module_ids` first: one summary per module (frame, counts, warnings), about a
-   minute on a large building. Then `module_ids=["M1"]` for the walls, slabs and
+   `module_ids` first: one summary per module (frame, counts, warnings), 1 to 2
+   min on a large building. Then `module_ids=["M1"]` for the walls, slabs and
    openings of the modules worth checking. Drill down only as far as needed:
    `element_detail="envelope"` (each element in the module frame), then the raw
    tools (`get_element_info`, `get_element_vertices`) on an object's
