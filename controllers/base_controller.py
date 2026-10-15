@@ -11,11 +11,12 @@ class BaseController:
     def __init__(self, controller_name: str):
         self.controller_name = controller_name
     
-    def send_command(self, operation: str, args: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def send_command(self, operation: str, args: Optional[Dict[str, Any]] = None,
+                     timeout: Optional[float] = None) -> Dict[str, Any]:
         """Send command to Cadwork and handle common error cases"""
         try:
             connection = get_connection()
-            response = connection.send_command(operation, args or {})
+            response = connection.send_command(operation, args or {}, timeout=timeout)
             
             if response.get("status") == "ok":
                 log_info(f"{self.controller_name}: {operation} completed successfully")
@@ -29,7 +30,11 @@ class BaseController:
             return {"status": "error", "message": f"Connection failed: {e}"}
         except TimeoutError as e:
             log_error(f"{self.controller_name}: Timeout error - {e}")
-            return {"status": "error", "message": f"Operation timed out: {e}"}
+            # Observed on Cadwork 2026: the bridge does not answer while a
+            # Cadwork command is active, until the modeller presses Escape.
+            return {"status": "error", "message": (
+                f"Operation timed out: {e}. If Cadwork is in an active command, "
+                "press Escape in Cadwork, then retry.")}
         except Exception as e:
             log_error(f"{self.controller_name}: Unexpected error - {e}")
             return {"status": "error", "message": f"Unexpected error: {e}"}

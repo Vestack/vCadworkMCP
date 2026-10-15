@@ -17,8 +17,12 @@ class CadworkConnection:
         self.host = host
         self.port = port
     
-    def send_command(self, operation: str, args: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """Send command to Cadwork and return response"""
+    def send_command(self, operation: str, args: Optional[Dict[str, Any]] = None,
+                     timeout: Optional[float] = None) -> Dict[str, Any]:
+        """Send command to Cadwork and return response.
+
+        timeout: seconds to wait for the bridge, SOCKET_TIMEOUT when omitted.
+        """
         command = {
             "operation": operation,
             "args": args or {}
@@ -30,7 +34,7 @@ class CadworkConnection:
         try:
             # Create and configure socket
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(SOCKET_TIMEOUT)
+            sock.settimeout(timeout or SOCKET_TIMEOUT)
             sock.connect((self.host, self.port))
             
             # Send command
