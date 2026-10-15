@@ -69,9 +69,10 @@ inventories need move to a shared place if they must change; the existing
 **Snapshots gain geometry.** `ElementSnapshot` holds an axis-aligned bounding box
 in model axes only. The object inventory needs, per element, its **vertices**
 (already read by `element_bbox` through `gc.get_element_vertices`, then
-discarded) and, for floor panels, the **local axes** (`gc.get_xl`, `gc.get_yl`,
-`gc.get_zl`, as used in `bridge/handlers/element_handlers.py`). Vertices are kept
-so that every element can be re-expressed in its module frame.
+discarded), its material, and the Module and Complexe attributes. Vertices are
+kept so that every element can be re-expressed in its module frame. Local axes
+are not needed: a floor subgroup holds dozens of elements (OSB, joists, I-joists)
+and no single floor panel, so the frame is derived from the floor's vertices.
 
 ## The tool
 
@@ -104,8 +105,11 @@ exhaustive, reproducible record of what was compared.
 
 Cost: one vertex query per scanned element, as today. With `module_ids`,
 attributes are read for every scanned element (to find the modules), vertices
-only for elements of the requested modules. The full export of a building stays
-slow; its duration is measured during the spike.
+only for elements of the requested modules and for joinery elements (which are
+attached by geometry, whatever their module). Reading attributes model-wide
+alone takes about 48 s on a 50 940-element model, beyond the 30 s socket
+timeout of `core/connection.py`: `send_command` gains a per-call timeout, set to
+15 min for this tool.
 
 ## Output format: `vestack.object_inventory/1`
 
@@ -162,7 +166,8 @@ One schema for the response and the file. Lengths in millimetres, rounded to
   the wall axis to the opening's near edge; `sill` from the wall's foot.
 - **slab**: `level` is `bottom` or `top`; `origin` is its min corner in the
   module frame.
-- **other**: an envelope (`origin`, `size`) and its `element_ids`.
+- **roof** (`TF`, `C`, `T`), **parapet** (`A`), **other**: an envelope
+  (`origin`, `size`), the `part` prefix when known, and `element_ids`.
 - `element_ids` on every object let Claude have the modeller select the
   elements behind a discrepancy.
 - `frame.origin_model` and the three `*_axis_model` unit vectors map the module
@@ -181,9 +186,11 @@ Computed from the module's bottom floor: the `F` subgroup whose group is
 `Plancher bas` (or Complexe `PB-…`), else the lowest slab as `module_inventory`
 finds it today:
 
-1. **Orientation** from the floor panel's local axes: **X** along its longer
-   side, projected onto the horizontal plane; **Z** vertical; **Y** completes a
-   right-handed frame.
+1. **Orientation** from the minimum-area rectangle enclosing the bottom
+   floor's vertices in plan (convex hull, then one candidate rectangle per hull
+   edge): **X** along the rectangle's longer side; **Z** vertical; **Y**
+   completes a right-handed frame. The hull area over the rectangle area is the
+   plan-area ratio checked in rule 4.
 2. **Origin** at the floor corner such that every floor vertex has x ≥ 0 and
    y ≥ 0; z at the underside of the floor.
 3. **180° tie-break**: two frames satisfy rules 1 and 2. Keep the one whose X
@@ -300,7 +307,7 @@ export. Three levels, from cheapest to most detailed:
 
 1. **Element detail in the module frame**: `get_object_inventory(module_ids=[...],
    element_detail="envelope" | "vertices")`. Under each object, an `elements`
-   list gives `element_id`, `name`, `type`, `material`, and the element's
+   list gives `element_id`, `name`, `material`, and the element's
    envelope (`origin`, `size`) or vertices **already expressed in the module
    frame**, so they compare directly with the Revit side. This is the
    recommended level: no coordinate arithmetic is left to Claude.
@@ -346,8 +353,9 @@ then module detail, then element detail, then raw tools.
   function takes a `str` argument the handler does not pass),
   `get_version_info` (`utility_controller.get_cadwork_version_info` is gone),
   `get_element_type` (`element_controller.get_element_type` is gone). The
-  inventory must not depend on them; `element_detail`'s `type` field needs the
-  2026 replacement, looked up in the cwapi3d documentation, not guessed.
+  inventory must not depend on them. `element_detail` therefore omits the
+  element type until its 2026 replacement is confirmed in the cwapi3d
+  documentation.
 
 ## Testing
 
@@ -373,8 +381,9 @@ All runnable outside Cadwork, in the existing `unittest` suite:
   existing Vestack adapter tests do: vertices and local axes reach the snapshots.
 - Discovery: `get_object_inventory` appears in
   `CommandDispatcher().diagnostics()`.
-- Existing `get_module_inventory` tests still pass; new cases cover the relaxed
-  module id rule, which `get_module_inventory` adopts too.
+- `get_module_inventory` adopts the relaxed module id rule and reports ids in
+  canonical form (`M001` becomes `M1`): its tests asserting zero-padded ids are
+  updated accordingly, the others pass unchanged.
 
 ## Spike results (15/10/2026)
 
