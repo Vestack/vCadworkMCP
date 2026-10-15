@@ -2,8 +2,8 @@
 
 Generated from the code: an operation works end to end only when `main.py`
 declares the tool **and** a `handle_<operation>` exists. Counts below:
-**167 tools declared**, **140 handlers**,
-**29 tools with no handler**.
+**167 tools declared**, **140 handlers**: 137 tools reach a handler, 4 are
+computed in the MCP server without Cadwork, **26 are not implemented**.
 
 Legend: (w) changes the model — Lane 2 rules apply. (f) writes a file to disk.
 Everything unmarked is read-only.
@@ -184,6 +184,16 @@ Everything unmarked is read-only.
 
 - `get_module_inventory`
 
+## Computed in the MCP server
+
+Pure arithmetic or static data: these work even when the bridge is down, and
+they never read the model.
+
+- `get_cadwork_axis_info`
+- `measure_angle`
+- `measure_area`
+- `measure_distance`
+
 ## Declared but not implemented
 
 These answer `Unknown operation`. Do not retry or rephrase — tell the user the
@@ -209,9 +219,6 @@ no further wiring.
 - `get_section_outline`
 - `intersect_elements`
 - `list_available_materials`
-- `measure_angle`
-- `measure_area`
-- `measure_distance`
 - `mirror_elements`
 - `project_point_to_element`
 - `round_edge`

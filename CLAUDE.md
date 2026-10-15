@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 An MCP (Model Context Protocol) server that lets an AI assistant drive **Cadwork 3D** (timber-construction CAD). It is **two processes**, not one:
 
-1. **MCP server** (`main.py`) — runs outside Cadwork, launched by the MCP client (Claude Desktop) over stdio. Exposes ~166 `@mcp.tool` definitions.
+1. **MCP server** (`main.py`) — runs outside Cadwork, launched by the MCP client (Claude Desktop) over stdio. Exposes 167 `@mcp.tool` definitions.
 2. **Bridge** (`cadwork_bridge.py` + `bridge/`) — runs *inside* Cadwork's embedded Python interpreter, started from the Cadwork plugin GUI. Owns a TCP socket server and is the only code allowed to touch the real cadwork API.
 
 They talk **unframed JSON over a raw TCP socket on `127.0.0.1:53002`**. There is no HTTP and no length header: the receiver keeps reading bytes until `json.loads` succeeds (`core/connection.py:_receive_response`, `cadwork_bridge.py:socket_server`).
@@ -50,38 +50,39 @@ Never let bridge-side code import from `controllers/`, and never assume `element
 
 ## What was repaired, and what is still missing
 
-The bridge was broken until the repair described below; the history explains the
-shape of the code, so do not undo it by "restoring" the old design.
+Until commit `e8a6e46` every operation answered `Processing error`: the
+dispatcher built its map from `controllers/*`, so the bridge called its own
+socket and returned un-awaited coroutines. Two rules keep it fixed:
 
-**The bug.** `bridge/dispatcher.py` used to build its map from `controllers/*`
-(the *server* side): async methods whose body is `BaseController.send_command()`,
-a socket call back to port 53002 — the bridge calling itself. Calls returned
-un-awaited coroutines, which `json.dumps` cannot serialise, so every operation
-answered `Processing error`. Meanwhile `bridge/handlers/` could not even be
-imported: three of its modules imported `bridge/controller_manager.py`, deleted in
-commit `bdc6111`.
+- **The dispatcher reads `bridge/handlers/` and `vestack/`, never `controllers/`.**
+- **`bridge/controller_manager.py` must not come back.** It resolved
+  `'set_group' -> 'attribute_controller'` to this repo's async proxy instead of
+  the Cadwork module, with a fallback that rewrote its global map. It is replaced
+  by `bridge/cadwork_api.py`: an explicit function-name → Cadwork-module map,
+  resolved per call, no fallback. Add an entry there when a handler needs a new
+  API function.
 
-**Why `controller_manager.py` must not come back.** Its `FUNCTION_CONTROLLER_MAP`
-maps `'set_group' -> 'attribute_controller'` meaning the *Cadwork* module, but
-`_get_controller()` resolved `controllers.attribute_controller`, this repo's async
-proxy. It was the same name-collision bug, plus a fallback that tried all sixteen
-controllers in turn and rewrote the global map as a side effect. It is replaced by
-`bridge/cadwork_api.py`: an explicit function-name → Cadwork-module map, resolved
-per call, no fallback. Add an entry there when a handler needs a new API function.
-
-**Still missing: 29 phantom tools.** `main.py` declares 167 tools but only 139
-handlers exist, so these answer `Unknown operation` with the list of valid ones:
+**Where the 167 tools go.** 137 reach a bridge operation. 4 are computed in the
+MCP server and work without Cadwork: `measure_distance`, `measure_angle`,
+`measure_area` (`controllers/measurement_controller.py`) and
+`get_cadwork_axis_info` (`main.py`). The remaining **26 are phantoms**: no handler
+exists, so they answer `Unknown operation` with the list of valid ones:
 `mirror_elements`, `scale_elements`, `stretch_elements`, `split_element`,
 `chamfer_edge`, `round_edge`, `intersect_elements`, `subtract_elements`,
 `unite_elements`, `project_point_to_element`, `calculate_center_of_mass`,
 `get_closest_point_on_element`, `get_element_outline`, `get_section_outline`,
 `get_elements_by_color`, `get_elements_by_layer`,
-`get_elements_by_dimension_range`, `measure_distance`, `measure_angle`,
-`measure_area`, `create_material`, `get_material_properties`,
+`get_elements_by_dimension_range`, `create_material`, `get_material_properties`,
 `list_available_materials`, `export_to_btl`, `export_to_ifc`, `export_to_dxf`,
 `export_element_list`, `export_cutting_list`, `export_workshop_drawings`.
 They were deliberately left declared as roadmap markers. Implementing one means
 writing its `handle_*`; the dispatcher then picks it up with no further wiring.
+Conversely, 3 of the 140 operations have no tool (`ping`, `get_model_name`,
+`get_version_info`), and 3 controller methods have neither a tool nor a handler
+(`get_export_formats`, `set_material_density`, `set_material_thermal_properties`).
+
+A tool without a handler is not necessarily a phantom: check whether its
+controller method calls `send_command` before listing it as one.
 
 **How far verification actually goes.** The server starts, reaches its lifespan
 handler and sends its `ping` to the bridge. Discovery finds all 140 operations,
