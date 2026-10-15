@@ -80,9 +80,14 @@ get_object_inventory(
     element_ids: list[int] | None = None,   # scan these only
     active_only: bool = False,              # scan the current selection
     module_ids: list[str] | None = None,    # detail these modules
+    element_detail: str = "none",           # "none" | "envelope" | "vertices"
     output_path: str | None = None,         # write the full inventory here
 )
 ```
+
+- `element_detail` applies to detailed modules only. `"envelope"` adds, under
+  each object, its elements with their envelope in the module frame;
+  `"vertices"` adds their vertices too. See "Drilling down to raw geometry".
 
 - No `module_ids`: the response is the **summary** for every module found: its
   frame, object counts per type, warnings.
@@ -118,6 +123,8 @@ One schema for the response and the file. Lengths in millimetres, rounded to
     "frame": {
       "origin_model": [12450, 3200, 0],
       "x_axis_model": [0, 1, 0],
+      "y_axis_model": [-1, 0, 0],
+      "z_axis_model": [0, 0, 1],
       "length": 11980, "width": 3980, "height": 3150
     },
     "counts": {"wall": 6, "slab": 2, "opening": 3, "other": 0},
@@ -153,8 +160,10 @@ One schema for the response and the file. Lengths in millimetres, rounded to
 - **other**: an envelope (`origin`, `size`) and its `element_ids`.
 - `element_ids` on every object let Claude have the modeller select the
   elements behind a discrepancy.
-- `frame.origin_model` and `x_axis_model` map the module frame back to model
-  coordinates.
+- `frame.origin_model` and the three `*_axis_model` unit vectors map the module
+  frame to model coordinates and back: a model point `P` has module coordinates
+  `((P - origin) · x, (P - origin) · y, (P - origin) · z)`. All three axes are
+  given so the transform never has to be reconstructed.
 - `extracted_at` is ISO 8601 in the file (machine-readable); French date format
   applies only to text shown to people.
 
@@ -211,6 +220,33 @@ A long side split into several panels yields one wall by geometric fallback and
 possibly several by field key. Such cutting differences are left to Claude's
 comparison rather than normalised here.
 
+## Drilling down to raw geometry
+
+The inventory is a summary of the model, not a replacement for it. When an
+object's envelope does not explain a discrepancy (a sloped wall, an opening
+found as a processing, a module the grouping got wrong), Claude must be able to
+go back to the elements themselves, through the same MCP server, without a new
+export. Three levels, from cheapest to most detailed:
+
+1. **Element detail in the module frame**: `get_object_inventory(module_ids=[...],
+   element_detail="envelope" | "vertices")`. Under each object, an `elements`
+   list gives `element_id`, `name`, `type`, `material`, and the element's
+   envelope (`origin`, `size`) or vertices **already expressed in the module
+   frame**, so they compare directly with the Revit side. This is the
+   recommended level: no coordinate arithmetic is left to Claude.
+2. **Raw element geometry in model coordinates**, through the existing
+   read-only tools, using the `element_ids` every object carries:
+   `get_element_info` (name, group, material, p1/p2/p3, local axes),
+   `get_element_vertices`, `get_element_facets`, `get_bounding_box`,
+   `get_element_length`/`width`/`height`, `get_minimum_distance_between_elements`.
+   The `frame` block converts these coordinates to the module frame.
+3. **Selection in Cadwork**: the modeller selects what Claude points at by
+   `element_ids`, then Claude reads it with `get_active_element_ids`. This is
+   also how the grouping is corrected when it put an element in the wrong object.
+
+The `cadwork-model` skill documents this drill-down order: inventory summary,
+then module detail, then element detail, then raw tools.
+
 ## Errors and warnings
 
 - Failures return `{"status": "error", "message": ...}`; a stopped bridge gives
@@ -240,6 +276,9 @@ All runnable outside Cadwork, in the existing `unittest` suite:
   floor (warning, no objects); field-key grouping; side-band fallback; interior
   wall; opening attached to its wall with correct `offset` and `sill`; open side;
   `openings not detected` warning.
+- Element detail: on a rotated module, element envelopes and vertices in the
+  module frame match the model coordinates transformed with the `frame` block;
+  an object's envelope equals the union of its elements' envelopes.
 - A golden JSON file pinning schema `vestack.object_inventory/1`.
 - Controller: file written only with `output_path`; summary versus detail;
   `module_ids` filter; unwritable path returns an error and leaves no file.
@@ -271,5 +310,5 @@ schema, controller, file export) can proceed before the spike.
 - `vestack/OBJECT_INVENTORY.md` (new): the schema, for the Revit side.
 - `vestack/README.md`: the new inventory, its files and limitations.
 - `.claude/skills/cadwork-model/tool-inventory.md` and `SKILL.md`: the new tool
-  and how to use summary versus detail.
+  and the drill-down order (summary, module detail, element detail, raw tools).
 - `CLAUDE.md`: production runs on Cadwork 2026; the new tool and its operation.
