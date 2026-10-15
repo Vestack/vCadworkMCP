@@ -11,18 +11,18 @@ from typing import Any, Collection, Dict, List, Optional
 
 from controllers.base_controller import BaseController
 from vestack.naming import parse_module_id
+from vestack.object_inventory import DETAIL_LEVELS
 
 # Reading attributes alone takes about 48 s on a 50 940-element model under
 # Cadwork 2026, beyond the default socket timeout; a full export takes minutes.
 OBJECT_INVENTORY_TIMEOUT_S: float = 900.0
 
-ELEMENT_DETAIL_LEVELS = ("none", "envelope", "vertices")
-
 
 def write_inventory_file(inventory: Dict[str, Any], output_path: str) -> str:
     """Write the inventory as JSON, atomically: no partial file on failure.
 
-    Returns the absolute path written. Raises OSError when it cannot be written.
+    Returns the absolute path written. Raises OSError when the file cannot be
+    written, TypeError or ValueError when the inventory cannot be serialised.
     """
     target = os.path.abspath(output_path)
     directory = os.path.dirname(target)
@@ -79,9 +79,9 @@ class VestackController(BaseController):
                                    element_detail: str = "none",
                                    output_path: Optional[str] = None) -> Dict[str, Any]:
         """Objects per module in module frames; optionally the full JSON export."""
-        if element_detail not in ELEMENT_DETAIL_LEVELS:
+        if element_detail not in DETAIL_LEVELS:
             return {"status": "error",
-                    "message": f"element_detail must be one of {ELEMENT_DETAIL_LEVELS}"}
+                    "message": f"element_detail must be one of {', '.join(DETAIL_LEVELS)}"}
 
         args: Dict[str, Any] = {"element_detail": element_detail}
         if element_ids:
@@ -100,7 +100,7 @@ class VestackController(BaseController):
 
         try:
             written = write_inventory_file(response, output_path)
-        except OSError as exc:
+        except (OSError, TypeError, ValueError) as exc:
             return {"status": "error",
                     "message": f"could not write the inventory to {output_path}: {exc}"}
 

@@ -1485,9 +1485,13 @@ async def get_module_inventory(element_ids: Optional[List[int]] = None,
         "module_ids=['M1'] for that module's objects, and element_detail="
         "'envelope' or 'vertices' to also get each element in the module frame. "
         "output_path writes the full inventory (every module, every object) as "
-        "JSON and still returns the summary. Reads attributes of the whole model "
-        "(about 1 min on a large building) and vertices only where needed. "
-        "Schema: vestack/OBJECT_INVENTORY.md."
+        "JSON and still returns the summary; the path is resolved on the machine "
+        "running the MCP server. With output_path every module is read in detail, "
+        "so the returned summary carries per-type counts (geometry-grouped objects "
+        "included) and module heights, and element_detail applies to the exported "
+        "file too. A module named in module_ids keeps its objects in the response. "
+        "Reads attributes of the whole model (about 1 min on a large building) and "
+        "vertices only where needed. Schema: vestack/OBJECT_INVENTORY.md."
     )
 )
 async def get_object_inventory(element_ids: Optional[List[int]] = None,

@@ -6,6 +6,7 @@ inventory built from the fixture module.
 import asyncio
 import json
 import os
+import shutil
 import tempfile
 import unittest
 from typing import Any, Dict, List, Optional, Tuple
@@ -56,6 +57,7 @@ class Arguments(unittest.TestCase):
 class FileExport(unittest.TestCase):
     def setUp(self) -> None:
         self.directory = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.directory, True)
         self.path = os.path.join(self.directory, "inventory.json")
 
     def test_the_file_holds_every_module_in_detail(self) -> None:
@@ -77,6 +79,20 @@ class FileExport(unittest.TestCase):
         self.assertEqual(response["status"], "error")
         self.assertFalse(os.path.exists(missing))
         self.assertEqual(os.listdir(self.directory), [])
+
+    def test_an_unserialisable_inventory_is_an_error_and_leaves_no_file(self) -> None:
+        with patch("vestack.mcp_controller.json.dump", side_effect=TypeError("not JSON")):
+            response = run([], output_path=self.path)
+        self.assertEqual(response["status"], "error")
+        self.assertIn("not JSON", response["message"])
+        self.assertEqual(os.listdir(self.directory), [])
+
+    def test_a_failed_replace_leaves_no_temporary_file(self) -> None:
+        taken = os.path.join(self.directory, "taken")
+        os.mkdir(taken)
+        response = run([], output_path=taken)
+        self.assertEqual(response["status"], "error")
+        self.assertEqual(os.listdir(self.directory), ["taken"])
 
 
 if __name__ == "__main__":
