@@ -106,7 +106,11 @@ describes the abandoned "no handlers layer" refactor — read it as history.
   resolved. `start.txt` is gone: the plugin imports `cadwork_bridge` directly
   instead of `exec()`-ing a text file.
 - Bridge port: the **server** side reads `CW_PORT` (default 53002, `core/server.py`); the **bridge** side hardcodes `53002` (`cadwork_bridge.py`). Changing it means editing both.
-- Python 3.12 (`mypy.ini`; the README's "3.8+" is stale). Cadwork provides the real
+- Python: the MCP server runs on the venv's 3.12 (`mypy.ini`; the README's "3.8+"
+  is stale), but **bridge-side code runs on Cadwork's embedded interpreter**:
+  3.10 for v30 (`EXE_30/Pclib.x64/python310`), 3.14 for 2026. Keep `bridge/`,
+  `vestack/` and `cadwork_bridge.py` valid Python 3.10: no `typing.Self`,
+  `except*`, `tomllib`. Cadwork provides the real
   `element_controller`, `geometry_controller`, `attribute_controller` and `cadwork`
   modules; the `cwapi3d` package provides stubs of the same names, so those imports
   also resolve outside Cadwork. The stubs type-check but do nothing, so an import
