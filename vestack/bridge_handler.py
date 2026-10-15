@@ -16,7 +16,7 @@ from typing import Any, Callable, Collection, Dict, List, Optional, Sequence, Tu
 
 from . import conventions as cv
 from .module_inventory import BBox, ElementSnapshot, build_inventory
-from .object_inventory import ObjectSnapshot, build_object_inventory, geometry_needed
+from .object_inventory import DETAIL_LEVELS, ObjectSnapshot, build_object_inventory, geometry_needed
 
 # Which Cadwork user attribute plays which role, matched on the attribute name.
 ATTRIBUTE_ROLES: Dict[str, Tuple[str, ...]] = {
@@ -266,10 +266,16 @@ def handle_get_object_inventory(args: Dict[str, Any]) -> Dict[str, Any]:
     inventory needs them (see object_inventory.geometry_needed).
     """
     try:
-        element_ids = _element_ids_to_scan(args)
+        element_detail = str(args.get("element_detail") or "none")
+        if element_detail not in DETAIL_LEVELS:
+            return {
+                "status": "error",
+                "message": (f"get_object_inventory: element_detail must be one of "
+                            f"{DETAIL_LEVELS}, got {element_detail!r}"),
+            }
+        element_ids = list(dict.fromkeys(_element_ids_to_scan(args)))
         module_ids = [str(m) for m in (args.get("module_ids") or [])]
         detail_all = bool(args.get("detail_all"))
-        element_detail = str(args.get("element_detail") or "none")
 
         attribute_numbers = resolve_attribute_numbers()
         snapshots = read_object_attributes(element_ids, attribute_numbers)

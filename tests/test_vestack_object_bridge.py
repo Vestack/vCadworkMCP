@@ -94,6 +94,16 @@ class HandleGetObjectInventory(unittest.TestCase):
         self.assertEqual(response["status"], "error")
         self.assertIn("element_detail", response["message"])
 
+    def test_an_invalid_detail_level_reads_nothing_from_cadwork(self) -> None:
+        calls: Set[int] = set()
+        response = run({"element_detail": "all"}, vertex_calls=calls)
+        self.assertEqual(response["status"], "error")
+        self.assertEqual(calls, set())
+
+    def test_duplicate_element_ids_are_scanned_once(self) -> None:
+        response = run({"element_ids": [1, 1, 2, 2]})
+        self.assertEqual(response["scanned_element_count"], 2)
+
     def test_a_cadwork_failure_becomes_an_error_response(self) -> None:
         broken = fake_cadwork(module_m1())
         broken["element_controller"] = types.ModuleType("fake")
