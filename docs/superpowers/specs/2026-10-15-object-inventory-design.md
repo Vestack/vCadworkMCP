@@ -224,7 +224,9 @@ name does not read as a module. This rule replaces `MODULE_ID_PATTERN` (`M\d{3}`
 which `get_module_inventory` finds **no module at all** in this model.
 
 **Where the id is read, in order:** the subgroup prefix, then the Module user
-attribute, then the group, then the element name. When subgroup and attribute
+attribute, then the group. The element name is never read: hardware names carry
+metric threads ("Tige filetée M12", "Boulon M16", "Vis M8 x 120") that would read
+as modules M12, M16, M8. When subgroup and attribute
 disagree (243 elements in the spike model), the subgroup wins and the module
 carries a warning with the number of disagreeing elements.
 

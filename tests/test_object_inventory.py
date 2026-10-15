@@ -274,6 +274,21 @@ class ModuleAssignment(unittest.TestCase):
         stray = element(70, box(0, 0, 0, 10, 10, 10), name="Connecteur", group="Jonction")
         self.assertIn(70, build_object_inventory(module_m1() + [stray])["unattached_element_ids"])
 
+    def test_a_metric_thread_in_the_name_is_not_a_module(self) -> None:
+        rod = element(80, box(500, 100, 500, 520, 300, 520), name="Tige filetée M12",
+                      group="Connecteurs", subgroup="Tiges")
+        inventory = build_object_inventory(module_m1() + [rod])
+        self.assertIn(80, inventory["unattached_element_ids"])
+        self.assertNotIn("M12", [m["module_id"] for m in inventory["modules"]])
+
+    def test_a_metric_thread_with_a_module_attribute_belongs_to_that_module(self) -> None:
+        rod = element(80, box(500, 100, 500, 520, 300, 520), name="Tige filetée M12",
+                      group="Connecteurs", subgroup="Tiges", module="M1")
+        inventory = build_object_inventory(module_m1() + [rod])
+        self.assertEqual([m["module_id"] for m in inventory["modules"]], ["M1"])
+        self.assertNotIn(80, inventory["unattached_element_ids"])
+        self.assertEqual(module_entry(inventory)["unclassified_element_count"], 1)
+
     def test_requesting_an_unknown_module_is_warned(self) -> None:
         inventory = build_object_inventory(module_m1(), module_ids=["M9"])
         self.assertIn("module M9 not found in the scanned elements", inventory["warnings"])

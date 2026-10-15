@@ -78,7 +78,7 @@ Because every module was read in detail, that summary carries the detail `counts
 
 | Key | Meaning |
 |---|---|
-| `module_id` | canonical id: `M` + number without leading zeros (`M001` → `M1`). Only an upper-case `M` is read: `m1` is not a module id. |
+| `module_id` | canonical id: `M` + number without leading zeros (`M001` → `M1`). Only an upper-case `M` is read: `m1` is not a module id. An element's module is read from its subgroup, then its `Module` attribute, then its group; never from its name, where `Tige filetée M12` is a thread size. |
 | `grouping_source` | `"subgroup"`, `"geometry"`, `"subgroup+geometry"`, or `null` |
 | `frame` | `origin_model`, `x_axis_model`, `y_axis_model`, `z_axis_model`, `length` (along X), `width` (along Y), `height` (top of the module's elements above the origin). `null` when there is no bottom floor, or it fills less than 80% of its enclosing rectangle. `height` is `null` in summarised modules: only detailed modules compute it. |
 | `counts` | objects per type: `wall`, `slab`, `roof`, `parapet`, `other`, `opening`. `opening` and `other` are always present, other types only when they occur. Subgroup parts count even when their geometry was not readable. In a summarised module, `counts` cover subgroup parts and the openings of subgroup walls only: a module with `grouping_source` `"geometry"` shows zero counts in a summary and its real counts in the detail. |
@@ -99,7 +99,7 @@ geometry (<label>)`, `unknown part prefix '<prefix>': reported as other`, and
 - `<module id>-<prefix as written><number as written>` for subgroup parts, with the
   module id in canonical form: the subgroup `M001-W05` gives `M1-W05`. A bare
   subgroup such as `W1` takes its module from the `Module` attribute (then from the
-  element's group, then its name), so `W1` of module 1 gives `M1-W1`;
+  element's group, never its name), so `W1` of module 1 gives `M1-W1`;
 - `M1-geo<n>` for geometric fallback groups. `n` counts the groups that exist in
   that module from 1, in this order: bottom slab, top slab, side walls (`-x`, `+x`,
   `-y`, `+y`), interior walls (by smallest element id), other;

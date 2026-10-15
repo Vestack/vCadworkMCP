@@ -73,14 +73,15 @@ def _model_bbox(vertices: Sequence[Point3]) -> Tuple[float, float, float, float,
 def element_module(snapshot: ObjectSnapshot) -> Tuple[Optional[str], Optional[PartRef], bool]:
     """Module and part of one element, and whether subgroup and attribute disagree.
 
-    The subgroup wins over the Module attribute, then come group and name.
+    The subgroup wins over the Module attribute, then comes the group. The
+    element name is never read: hardware names carry metric threads ("Tige
+    filetée M12", "Vis M8 x 120") that read as module ids.
     """
     part = parse_part(snapshot.subgroup)
     from_subgroup = (part.module_id if part and part.module_id
                      else parse_module_id(snapshot.subgroup))
     from_attribute = parse_module_id(snapshot.module_attribute)
-    module = (from_subgroup or from_attribute or parse_module_id(snapshot.group)
-              or parse_module_id(snapshot.name))
+    module = from_subgroup or from_attribute or parse_module_id(snapshot.group)
     disagree = bool(from_subgroup and from_attribute and from_subgroup != from_attribute)
     return module, part, disagree
 
