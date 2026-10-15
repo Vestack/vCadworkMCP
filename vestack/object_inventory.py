@@ -129,6 +129,26 @@ def _wall_bodies(elements: Sequence[ObjectSnapshot]) -> List[ObjectSnapshot]:
     return [e for e in elements if wall_body_section(e.name) is not None]
 
 
+def _is_top_hinted(e: ObjectSnapshot) -> bool:
+    return floor_level_hint(e.group, e.complex_code) == "top"
+
+
+def _floor_parts(module: _Module) -> Dict[str, List[ObjectSnapshot]]:
+    """Slab parts that may hold the bottom floor: elements hinted "top" left out."""
+    parts = {oid: [e for e in els if not _is_top_hinted(e)]
+             for oid, els in module.parts.items()
+             if module.part_refs[oid].object_type == "slab"}
+    return {oid: els for oid, els in parts.items() if els}
+
+
+def _is_known_prefix(prefix: str) -> bool:
+    return prefix.upper() in cv.PART_TYPES or prefix.lower() in cv.NAMED_PARTS
+
+
+def _unknown_prefixes(module: _Module) -> List[str]:
+    return sorted({r.prefix for r in module.part_refs.values() if not _is_known_prefix(r.prefix)})
+
+
 def geometry_needed(snapshots: Sequence[ObjectSnapshot],
                     module_ids: Optional[Collection[str]] = None,
                     detail_all: bool = False) -> Set[int]:
@@ -136,22 +156,23 @@ def geometry_needed(snapshots: Sequence[ObjectSnapshot],
 
     Always: joinery, wall bodies (all wall elements when a wall has no single
     body), slab parts (to find the bottom floor), and every element of a module
-    with no slab part. In detailed modules: every element.
+    with no slab part that may be its bottom floor (none, or only parts hinted
+    "top"). In detailed modules: every element.
     """
     requested = {parse_module_id(m) or m for m in (module_ids or [])}
     modules, joinery, _unattached, _processing = _partition(snapshots)
     needed: Set[int] = {s.element_id for s in joinery}
     for module in modules.values():
         everything = detail_all or module.module_id in requested
-        has_slab_part = any(r.object_type == "slab" for r in module.part_refs.values())
+        has_floor_part = bool(_floor_parts(module))
         for object_id, elements in module.parts.items():
             object_type = module.part_refs[object_id].object_type
-            if everything or not has_slab_part or object_type == "slab":
+            if everything or not has_floor_part or object_type == "slab":
                 needed.update(e.element_id for e in elements)
             elif object_type == "wall":
                 bodies = _wall_bodies(elements)
                 needed.update(e.element_id for e in (bodies if len(bodies) == 1 else elements))
-        if everything or not has_slab_part:
+        if everything or not has_floor_part:
             needed.update(e.element_id for e in module.loose)
     return needed
 
@@ -163,9 +184,12 @@ def _with_vertices(elements: Sequence[ObjectSnapshot]) -> List[ObjectSnapshot]:
 
 
 def _bottom_floor(module: _Module) -> List[ObjectSnapshot]:
-    """Elements making the module's bottom floor, possibly none."""
-    slab_parts = {oid: _with_vertices(els) for oid, els in module.parts.items()
-                  if module.part_refs[oid].object_type == "slab"}
+    """Elements making the module's bottom floor, possibly none.
+
+    In order: slab-part elements hinted "bottom", else the lowest slab part
+    (elements hinted "top" left out), else the lowest loose slabs.
+    """
+    slab_parts = {oid: _with_vertices(els) for oid, els in _floor_parts(module).items()}
     slab_parts = {oid: els for oid, els in slab_parts.items() if els}
     hinted = [e for els in slab_parts.values() for e in els
               if floor_level_hint(e.group, e.complex_code) == "bottom"]
@@ -181,6 +205,17 @@ def _bottom_floor(module: _Module) -> List[ObjectSnapshot]:
     lowest = min(_model_bbox(e.vertices)[2] for e in candidates)
     return [e for e in candidates
             if _model_bbox(e.vertices)[2] < lowest + cv.TOP_FLOOR_MIN_CLEARANCE_MM]
+
+
+def _module_height(module: _Module, frame: ModuleFrame) -> Optional[float]:
+    """Top of the module's elements above the frame origin, None without vertices.
+
+    Only meaningful when every element's vertices were read, as in a detailed
+    module: the summary reads too few of them and reports no height.
+    """
+    tops = [v[2] for els in module.parts.values() for e in els for v in e.vertices]
+    tops += [v[2] for e in module.loose for v in e.vertices]
+    return max(tops) - frame.origin[2] if tops else None
 
 
 def _frame_dict(frame: ModuleFrame, height: Optional[float]) -> Dict[str, Any]:
@@ -316,38 +351,79 @@ def _band_side(box: LocalBox, frame: ModuleFrame) -> Optional[str]:
     return next((side for side in SIDES if tests[side]), None)
 
 
-def _fallback_groups(loose: Sequence[ObjectSnapshot], frame: ModuleFrame
+def _is_upright(box: LocalBox) -> bool:
+    """Tall and thin in plan: a wall panel, or a stud, which has no length rule."""
+    dx, dy, dz = box.size
+    return dz >= cv.WALL_MIN_HEIGHT_MM and min(dx, dy) <= cv.WALL_MAX_THICKNESS_MM
+
+
+def _gap(lo_a: float, hi_a: float, lo_b: float, hi_b: float) -> float:
+    """Distance between two intervals, 0 when they overlap."""
+    return max(0.0, max(lo_a, lo_b) - min(hi_a, hi_b))
+
+
+def _same_interior_wall(a: LocalBox, b: LocalBox) -> bool:
+    """Whether two upright elements share a plane and are close along it."""
+    tol, gap = cv.INTERIOR_WALL_PLANE_TOLERANCE_MM, cv.INTERIOR_WALL_GAP_MM
+    ca, cb = a.centre, b.centre
+    return ((abs(ca[1] - cb[1]) <= tol and _gap(a.lo[0], a.hi[0], b.lo[0], b.hi[0]) <= gap)
+            or (abs(ca[0] - cb[0]) <= tol and _gap(a.lo[1], a.hi[1], b.lo[1], b.hi[1]) <= gap))
+
+
+def _components(boxes: Sequence[LocalBox]) -> List[List[int]]:
+    """Indices of the boxes grouped by _same_interior_wall, transitively (union-find)."""
+    parent = list(range(len(boxes)))
+
+    def find(i: int) -> int:
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    for i in range(len(boxes)):
+        for j in range(i + 1, len(boxes)):
+            if _same_interior_wall(boxes[i], boxes[j]):
+                parent[find(i)] = find(j)
+    groups: Dict[int, List[int]] = {}
+    for i in range(len(boxes)):
+        groups.setdefault(find(i), []).append(i)
+    return list(groups.values())
+
+
+def _fallback_groups(loose: Sequence[ObjectSnapshot], frame: ModuleFrame, floor_top: float
                      ) -> List[Tuple[str, str, List[ObjectSnapshot]]]:
-    """(kind, label, elements) groups for elements outside any part subgroup."""
+    """(kind, label, elements) groups for elements outside any part subgroup.
+
+    Tried in order per element: within SIDE_BAND_MM of a floor edge -> that
+    side's wall (plates included); slab-shaped -> the top slab when its
+    underside clears the bottom floor's top (floor_top, local z) by
+    TOP_FLOOR_MIN_CLEARANCE_MM, else the bottom slab; upright -> an interior
+    wall, one per connected set; anything else -> other.
+    """
     slabs: Dict[str, List[ObjectSnapshot]] = {}
     sides: Dict[str, List[ObjectSnapshot]] = {}
-    clusters: List[Tuple[bool, float, List[ObjectSnapshot]]] = []
+    upright: List[Tuple[ObjectSnapshot, LocalBox]] = []
     others: List[ObjectSnapshot] = []
     for e in _with_vertices(loose):
         box = frame.box_of(e.vertices)
-        kind = classify(box.lo + box.hi)
-        if kind == "slab":
-            level = "bottom" if box.lo[2] < cv.TOP_FLOOR_MIN_CLEARANCE_MM else "top"
-            slabs.setdefault(level, []).append(e)
-            continue
         side = _band_side(box, frame)
         if side is not None:
             sides.setdefault(side, []).append(e)
-        elif kind == "wall":
-            along_x = box.size[0] >= box.size[1]
-            plane = box.centre[1] if along_x else box.centre[0]
-            for c_axis, c_plane, members in clusters:
-                if c_axis == along_x and abs(c_plane - plane) <= cv.INTERIOR_WALL_PLANE_TOLERANCE_MM:
-                    members.append(e)
-                    break
-            else:
-                clusters.append((along_x, plane, [e]))
+        elif classify(box.lo + box.hi) == "slab":
+            level = ("top" if box.lo[2] >= floor_top + cv.TOP_FLOOR_MIN_CLEARANCE_MM
+                     else "bottom")
+            slabs.setdefault(level, []).append(e)
+        elif _is_upright(box):
+            upright.append((e, box))
         else:
             others.append(e)
+    interior = [[upright[i][0] for i in members]
+                for members in _components([b for _e, b in upright])]
+    interior.sort(key=lambda members: min(e.element_id for e in members))
     groups: List[Tuple[str, str, List[ObjectSnapshot]]] = []
     groups += [("slab", level, slabs[level]) for level in ("bottom", "top") if level in slabs]
     groups += [("wall", side, sides[side]) for side in SIDES if side in sides]
-    groups += [("wall", "interior", members) for _a, _p, members in clusters]
+    groups += [("wall", "interior", members) for members in interior]
     if others:
         groups.append(("other", "", others))
     return groups
@@ -406,6 +482,31 @@ def _opening_records(wall: _Wall, items: Sequence[Tuple[ObjectSnapshot, LocalBox
 
 # --- entry point -----------------------------------------------------------
 
+@dataclass
+class _GeoGroup:
+    """One object of the geometric fallback, with its wall when it is one."""
+
+    object_id: str
+    kind: str
+    label: str
+    elements: List[ObjectSnapshot]
+    wall: Optional[_Wall] = None
+
+
+def _geo_groups(module: _Module, frame: ModuleFrame,
+                floor: Sequence[ObjectSnapshot]) -> List[_GeoGroup]:
+    """Fallback objects of a detailed module, walls built so they can take openings."""
+    floor_top = max(frame.box_of(e.vertices).hi[2] for e in floor)
+    groups = []
+    for n, (kind, label, elements) in enumerate(
+            _fallback_groups(module.loose, frame, floor_top), start=1):
+        group = _GeoGroup(f"{module.module_id}-geo{n}", kind, label, elements)
+        if kind == "wall":
+            group.wall = _make_wall(group.object_id, elements, frame, check_union=False)
+        groups.append(group)
+    return groups
+
+
 def build_object_inventory(snapshots: Sequence[ObjectSnapshot],
                            module_ids: Optional[Collection[str]] = None,
                            detail_all: bool = False,
@@ -429,7 +530,7 @@ def build_object_inventory(snapshots: Sequence[ObjectSnapshot],
                 for m in sorted(requested - set(modules))]
 
     frames: Dict[str, ModuleFrame] = {}
-    bottoms: Dict[str, Set[int]] = {}
+    floors: Dict[str, List[ObjectSnapshot]] = {}
     module_warnings: Dict[str, List[str]] = {m: [] for m in modules}
     for module_id, module in modules.items():
         floor = _bottom_floor(module)
@@ -438,6 +539,9 @@ def build_object_inventory(snapshots: Sequence[ObjectSnapshot],
         if module.disagreements:
             mw.append(f"{module.disagreements} elements have a Module attribute that "
                       "disagrees with their subgroup; the subgroup was used")
+        unknown = _unknown_prefixes(module)
+        if unknown:
+            mw.append(f"unknown part prefixes reported as other: {', '.join(unknown)}")
         if frame is None:
             mw.append("no bottom floor found: no frame, no objects")
         elif frame.plan_area_ratio < cv.MIN_PLAN_AREA_RATIO:
@@ -445,7 +549,7 @@ def build_object_inventory(snapshots: Sequence[ObjectSnapshot],
                       "rectangle: not rectangular, objects omitted")
         else:
             frames[module_id] = frame
-            bottoms[module_id] = {e.element_id for e in floor}
+            floors[module_id] = floor
 
     detailed = {m for m in modules if detail_all or m in requested}
     walls: Dict[str, List[_Wall]] = {}
@@ -456,7 +560,19 @@ def build_object_inventory(snapshots: Sequence[ObjectSnapshot],
                 wall = _make_wall(object_id, elements, frame, module_id in detailed)
                 if wall is not None:
                     walls.setdefault(module_id, []).append(wall)
+    geo: Dict[str, List[_GeoGroup]] = {}
+    geo_walls: Dict[str, List[_Wall]] = {}
+    for module_id in sorted(detailed & set(frames), key=module_number):
+        geo[module_id] = _geo_groups(modules[module_id], frames[module_id], floors[module_id])
+        found = [g.wall for g in geo[module_id] if g.wall is not None]
+        if found:
+            geo_walls[module_id] = found
+
+    # Subgroup walls first, so a summary counts the same openings as a detail;
+    # then the fallback walls of detailed modules take what is left.
     attached, orphans = _attach_openings(joinery, walls, frames)
+    geo_attached, orphans = _attach_openings(orphans, geo_walls, frames)
+    attached.update(geo_attached)
 
     orphans_by_module: Dict[str, List[ObjectSnapshot]] = {}
     for j in orphans:
@@ -470,20 +586,23 @@ def build_object_inventory(snapshots: Sequence[ObjectSnapshot],
     for module_id in sorted(modules, key=module_number):
         module = modules[module_id]
         frame = frames.get(module_id)
-        entry: Dict[str, Any] = {"module_id": module_id, "grouping_source": None,
-                                 "frame": None, "counts": {}, "warnings": module_warnings[module_id]}
+        is_detailed = module_id in detailed
+        entry: Dict[str, Any] = {"module_id": module_id,
+                                 "grouping_source": _grouping_source(module),
+                                 "frame": None, "counts": {},
+                                 "warnings": module_warnings[module_id]}
         if frame is not None:
-            heights = [v[2] for els in module.parts.values() for e in els for v in e.vertices]
-            heights += [v[2] for e in module.loose for v in e.vertices]
-            entry["frame"] = _frame_dict(frame, max(heights) - frame.origin[2] if heights else None)
-        objects = _module_objects(module, frame, walls.get(module_id, []), attached,
-                                  orphans_by_module.get(module_id, []),
-                                  bottoms.get(module_id, set()),
-                                  module_id in detailed, element_detail)
-        entry["grouping_source"] = objects["grouping_source"]
-        entry["counts"] = objects["counts"]
-        if module_id in detailed:
-            entry["objects"] = objects["objects"] if frame is not None else []
+            entry["frame"] = _frame_dict(frame, _module_height(module, frame)
+                                         if is_detailed else None)
+        objects, counts = _module_objects(module, frame, walls.get(module_id, []),
+                                          geo.get(module_id, []), attached,
+                                          orphans_by_module.get(module_id, []),
+                                          {e.element_id for e in floors.get(module_id, [])},
+                                          is_detailed, element_detail,
+                                          module_warnings[module_id])
+        entry["counts"] = counts
+        if is_detailed:
+            entry["objects"] = objects
         else:
             entry["unclassified_element_count"] = len(module.loose)
         entries.append(entry)
@@ -499,21 +618,44 @@ def build_object_inventory(snapshots: Sequence[ObjectSnapshot],
     }
 
 
+def _grouping_source(module: _Module) -> Optional[str]:
+    """How the module's elements are grouped, the same in summary and detail."""
+    if module.parts and module.loose:
+        return "subgroup+geometry"
+    if module.parts:
+        return "subgroup"
+    return "geometry" if module.loose else None
+
+
 def _module_objects(module: _Module, frame: Optional[ModuleFrame], walls: Sequence[_Wall],
+                    geo: Sequence[_GeoGroup],
                     attached: Dict[str, List[Tuple[ObjectSnapshot, LocalBox]]],
                     orphans: Sequence[ObjectSnapshot], bottom_ids: Set[int],
-                    detailed: bool, element_detail: str) -> Dict[str, Any]:
-    """Objects of one module (detail), with counts and grouping source."""
-    counts: Counter = Counter()
-    for object_id, ref in module.part_refs.items():
-        counts[ref.object_type] += 1
+                    detailed: bool, element_detail: str,
+                    warnings: List[str]) -> Tuple[List[Dict[str, Any]], Dict[str, int]]:
+    """Objects of one module (detail only) and its counts.
+
+    The summary counts subgroup objects and the openings of subgroup walls; the
+    detail adds the fallback objects, their openings, and stray joinery as
+    "other". Objects with no readable geometry are omitted with a module warning.
+    """
+    counts: Counter = Counter(ref.object_type for ref in module.part_refs.values())
     counts["opening"] = sum(len(attached.get(w.object_id, [])) for w in walls)
-    counts["other"] += len(orphans)
-    source: Optional[str] = ("subgroup" if module.parts
-                             else "geometry" if module.loose else None)
+    counts.setdefault("other", 0)
     objects: List[Dict[str, Any]] = []
     if frame is None or not detailed:
-        return {"objects": objects, "counts": dict(counts), "grouping_source": source}
+        return objects, dict(counts)
+    module_frame = frame
+
+    def add(object_id: str, record: Optional[Dict[str, Any]],
+            elements: Sequence[ObjectSnapshot]) -> bool:
+        if record is None:
+            warnings.append(f"{object_id}: no readable geometry, omitted")
+            return False
+        if element_detail != "none":
+            record["elements"] = _element_details(elements, module_frame, element_detail)
+        objects.append(record)
+        return True
 
     wall_by_id = {w.object_id: w for w in walls}
     for object_id in sorted(module.parts, key=_part_sort_key):
@@ -532,38 +674,33 @@ def _module_objects(module: _Module, frame: Optional[ModuleFrame], walls: Sequen
                                       _slab_level(elements, is_bottom))
         else:
             record = _make_box_object(object_id, ref.object_type, elements, frame, ref.prefix)
-        if record is None:
-            continue
-        if element_detail != "none":
-            record["elements"] = _element_details(elements, frame, element_detail)
-        objects.append(record)
+        if record is not None and not _is_known_prefix(ref.prefix):
+            record["warnings"].append(f"unknown part prefix '{ref.prefix}': reported as other")
+        add(object_id, record, elements)
 
-    fallback = _fallback_groups(module.loose, frame)
-    if fallback:
-        source = "subgroup+geometry" if module.parts else "geometry"
-    for n, (kind, label, elements) in enumerate(fallback, start=1):
-        object_id = f"{module.module_id}-geo{n}"
+    for group in geo:
         made: Optional[Dict[str, Any]]
-        if kind == "wall":
-            geo_wall = _make_wall(object_id, elements, frame, check_union=False)
-            made = geo_wall.record if geo_wall else None
-            if made is not None:
-                made["warnings"].append(f"grouped by geometry ({label})")
-        elif kind == "slab":
-            made = _make_box_object(object_id, "slab", elements, frame, None, label)
+        if group.kind == "wall":
+            made = None
+            if group.wall is not None:
+                items = attached.get(group.object_id, [])
+                made = group.wall.record
+                made["openings"] = _opening_records(group.wall, items)
+                made["warnings"].append(f"grouped by geometry ({group.label})")
+                counts["opening"] += len(items)
+        elif group.kind == "slab":
+            made = _make_box_object(group.object_id, "slab", group.elements, frame, None,
+                                    group.label)
         else:
-            made = _make_box_object(object_id, "other", elements, frame, None)
-        if made is None:
-            continue
-        if element_detail != "none":
-            made["elements"] = _element_details(elements, frame, element_detail)
-        objects.append(made)
-        counts[kind] += 1
+            made = _make_box_object(group.object_id, "other", group.elements, frame, None)
+        if add(group.object_id, made, group.elements):
+            counts[group.kind] += 1
 
     for j in orphans:
-        stray = _make_box_object(f"{module.module_id}-joinery{j.element_id}", "other",
-                                 [j], frame, None)
+        object_id = f"{module.module_id}-joinery{j.element_id}"
+        stray = _make_box_object(object_id, "other", [j], frame, None)
         if stray is not None:
             stray["warnings"].append(f"joinery '{j.name.strip()}' lies in no wall")
-            objects.append(stray)
-    return {"objects": objects, "counts": dict(counts), "grouping_source": source}
+            counts["other"] += 1
+        add(object_id, stray, [j])
+    return objects, dict(counts)

@@ -78,6 +78,10 @@ PART_TYPES: Dict[str, str] = {
     "A": "parapet",    # acrotere
 }
 
+# Named parts observed in the spike model, compared lower-cased: reported as
+# "other" without warning. Any prefix neither here nor in PART_TYPES is warned.
+NAMED_PARTS: Tuple[str, ...] = ("poteaux", "porteuses", "fourrure")
+
 # "<module id><separator><letters><number?>", e.g. M1-W5, M16-TF0, M8-Poteaux.
 PART_SUBGROUP_PATTERN: Pattern[str] = re.compile(
     r"^\s*M(\d{1,4})[-_ ]([A-Za-z]+)(\d*)\s*$")
@@ -116,3 +120,7 @@ COMPLEX_ATTRIBUTE_NAMES: Tuple[str, ...] = ("complexe", "complex")
 # Geometric fallback: vertical elements whose mid-planes lie within this
 # distance of each other form one interior wall.
 INTERIOR_WALL_PLANE_TOLERANCE_MM: float = 100.0
+
+# Two such elements sharing a plane belong to the same interior wall when the
+# gap between them along that plane is at most this: one stud spacing.
+INTERIOR_WALL_GAP_MM: float = 600.0
