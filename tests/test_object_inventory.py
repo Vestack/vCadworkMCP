@@ -412,6 +412,21 @@ class GeometricFallback(unittest.TestCase):
         self.assertEqual(kinds, [("slab", "bottom", None, [1, 2]), ("wall", None, "-y", [3])])
         self.assertEqual(entry["objects"][1]["start"], [0, 100, 22])
 
+    def test_a_lower_recess_does_not_become_the_whole_floor(self) -> None:
+        # A wet-room recess 30 mm below the floor: the floor is anchored on its
+        # largest panel, and the recess joins it.
+        snaps = [element(1, box(0, 0, 0, 6000, 2500, 22), name="OSB", module="M5"),
+                 element(2, box(4000, 1000, -30, 5500, 2400, -8), name="OSB decaisse",
+                         module="M5"),
+                 element(3, box(0, 0, 22, 6000, 200, 2665), name="OSB mur", module="M5")]
+        entry = module_entry(build_object_inventory(snaps, module_ids=["M5"]), "M5")
+        frame = entry["frame"]
+        self.assertEqual((frame["origin_model"], frame["length"], frame["width"]),
+                         ([0, 0, -30], 6000, 2500))
+        kinds = [(o["type"], o.get("level"), o.get("side"), o["element_ids"])
+                 for o in entry["objects"]]
+        self.assertEqual(kinds, [("slab", "bottom", None, [1, 2]), ("wall", None, "-y", [3])])
+
     def test_interior_plates_are_neither_slabs_nor_floor(self) -> None:
         snaps = [element(1, box(0, 0, 0, 6000, 2500, 220), name="OSB", module="M5"),
                  element(2, box(1000, 1200, 220, 4000, 1300, 265), name="lisse basse",

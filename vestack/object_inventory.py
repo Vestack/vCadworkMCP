@@ -202,11 +202,21 @@ def _bottom_floor(module: _Module) -> List[ObjectSnapshot]:
                   if classify(_model_bbox(e.vertices)) == "slab"]
     if not candidates:
         return []
-    # The lowest layer only: slabs starting below the top of the lowest one.
-    # A wall plate resting on the floor starts at its top and stays out.
-    base = min(candidates, key=lambda e: _model_bbox(e.vertices)[2])
-    base_top = _model_bbox(base.vertices)[5]
-    return [e for e in candidates if _model_bbox(e.vertices)[2] < base_top]
+    # Anchor on the largest panel near the bottom, so that a small piece lower
+    # than the floor (a wet-room recess) does not become the whole floor; keep
+    # the slabs starting below the anchor's top. A wall plate resting on the
+    # floor starts at that top and stays out.
+    boxes = {e.element_id: _model_bbox(e.vertices) for e in candidates}
+    lowest = min(b[2] for b in boxes.values())
+    near = [e for e in candidates
+            if boxes[e.element_id][2] <= lowest + cv.TOP_FLOOR_MIN_CLEARANCE_MM]
+
+    def area_key(e: ObjectSnapshot) -> Tuple[float, int]:
+        x0, y0, _z0, x1, y1, _z1 = boxes[e.element_id]
+        return (-(x1 - x0) * (y1 - y0), e.element_id)
+
+    anchor_top = boxes[min(near, key=area_key).element_id][5]
+    return [e for e in candidates if boxes[e.element_id][2] < anchor_top]
 
 
 def _module_height(module: _Module, frame: ModuleFrame) -> Optional[float]:
