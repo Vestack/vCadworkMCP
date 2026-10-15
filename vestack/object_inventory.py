@@ -202,9 +202,11 @@ def _bottom_floor(module: _Module) -> List[ObjectSnapshot]:
                   if classify(_model_bbox(e.vertices)) == "slab"]
     if not candidates:
         return []
-    lowest = min(_model_bbox(e.vertices)[2] for e in candidates)
-    return [e for e in candidates
-            if _model_bbox(e.vertices)[2] < lowest + cv.TOP_FLOOR_MIN_CLEARANCE_MM]
+    # The lowest layer only: slabs starting below the top of the lowest one.
+    # A wall plate resting on the floor starts at its top and stays out.
+    base = min(candidates, key=lambda e: _model_bbox(e.vertices)[2])
+    base_top = _model_bbox(base.vertices)[5]
+    return [e for e in candidates if _model_bbox(e.vertices)[2] < base_top]
 
 
 def _module_height(module: _Module, frame: ModuleFrame) -> Optional[float]:
@@ -241,9 +243,11 @@ class _Wall:
     record: Dict[str, Any]
 
 
-def _wall_geometry(box: LocalBox, frame: ModuleFrame) -> Tuple[bool, Point3, Point3, float, Optional[str]]:
+def _wall_geometry(box: LocalBox, frame: ModuleFrame, along: Optional[bool] = None
+                   ) -> Tuple[bool, Point3, Point3, float, Optional[str]]:
+    """Axis, foot line, thickness and side of a wall box; `along` forces the axis."""
     sx, sy, _sz = box.size
-    along_x = sx >= sy
+    along_x = sx >= sy if along is None else along
     band = cv.SIDE_BAND_MM
     if along_x:
         mid = (box.lo[1] + box.hi[1]) / 2
@@ -257,7 +261,7 @@ def _wall_geometry(box: LocalBox, frame: ModuleFrame) -> Tuple[bool, Point3, Poi
 
 
 def _make_wall(object_id: str, elements: Sequence[ObjectSnapshot], frame: ModuleFrame,
-               check_union: bool) -> Optional[_Wall]:
+               check_union: bool, along: Optional[bool] = None) -> Optional[_Wall]:
     readable = _with_vertices(elements)
     if not readable:
         return None
@@ -285,7 +289,7 @@ def _make_wall(object_id: str, elements: Sequence[ObjectSnapshot], frame: Module
                          for i in range(3))
             warnings.append(f"elements stick out of the wall body by up to {_mm(excess)} mm: "
                             f"{out}")
-    along_x, start, end, thickness, side = _wall_geometry(body, frame)
+    along_x, start, end, thickness, side = _wall_geometry(body, frame, along)
     record: Dict[str, Any] = {
         "id": object_id,
         "type": "wall",
@@ -362,17 +366,29 @@ def _gap(lo_a: float, hi_a: float, lo_b: float, hi_b: float) -> float:
     return max(0.0, max(lo_a, lo_b) - min(hi_a, hi_b))
 
 
-def _same_interior_wall(a: LocalBox, b: LocalBox) -> bool:
-    """Whether two upright elements share a plane and are close along it."""
-    tol, gap = cv.INTERIOR_WALL_PLANE_TOLERANCE_MM, cv.INTERIOR_WALL_GAP_MM
-    ca, cb = a.centre, b.centre
-    return ((abs(ca[1] - cb[1]) <= tol and _gap(a.lo[0], a.hi[0], b.lo[0], b.hi[0]) <= gap)
-            or (abs(ca[0] - cb[0]) <= tol and _gap(a.lo[1], a.hi[1], b.lo[1], b.hi[1]) <= gap))
+def _on_plane(a: LocalBox, b: LocalBox, axis: int) -> bool:
+    """Whether two upright elements share a wall plane running along `axis`.
+
+    axis 0 is X: their centres are within the plane tolerance in y and their
+    x-intervals are at most INTERIOR_WALL_GAP_MM apart. axis 1 swaps x and y.
+    """
+    across = 1 - axis
+    return (abs(a.centre[across] - b.centre[across]) <= cv.INTERIOR_WALL_PLANE_TOLERANCE_MM
+            and _gap(a.lo[axis], a.hi[axis], b.lo[axis], b.hi[axis])
+            <= cv.INTERIOR_WALL_GAP_MM)
 
 
-def _components(boxes: Sequence[LocalBox]) -> List[List[int]]:
-    """Indices of the boxes grouped by _same_interior_wall, transitively (union-find)."""
-    parent = list(range(len(boxes)))
+def _components(boxes: Sequence[LocalBox], axis: int) -> List[List[int]]:
+    """Indices of the boxes able to stand in a wall along `axis`, grouped by
+    _on_plane transitively (union-find).
+
+    An element stands in a wall along X only when its y-size fits a wall
+    thickness (WALL_MAX_THICKNESS_MM), and conversely: a panel running along Y
+    never joins an X wall, even when its centre happens to lie on that plane.
+    """
+    across = 1 - axis
+    members = [i for i, b in enumerate(boxes) if b.size[across] <= cv.WALL_MAX_THICKNESS_MM]
+    parent = {i: i for i in members}
 
     def find(i: int) -> int:
         while parent[i] != i:
@@ -380,25 +396,63 @@ def _components(boxes: Sequence[LocalBox]) -> List[List[int]]:
             i = parent[i]
         return i
 
-    for i in range(len(boxes)):
-        for j in range(i + 1, len(boxes)):
-            if _same_interior_wall(boxes[i], boxes[j]):
+    for n, i in enumerate(members):
+        for j in members[n + 1:]:
+            if _on_plane(boxes[i], boxes[j], axis):
                 parent[find(i)] = find(j)
     groups: Dict[int, List[int]] = {}
-    for i in range(len(boxes)):
+    for i in members:
         groups.setdefault(find(i), []).append(i)
     return list(groups.values())
 
 
-def _fallback_groups(loose: Sequence[ObjectSnapshot], frame: ModuleFrame, floor_top: float
-                     ) -> List[Tuple[str, str, List[ObjectSnapshot]]]:
-    """(kind, label, elements) groups for elements outside any part subgroup.
+def _interior_walls(upright: Sequence[Tuple[ObjectSnapshot, LocalBox]]
+                    ) -> List[Tuple[bool, List[ObjectSnapshot]]]:
+    """(along_x, elements) per interior wall, each element in one wall only.
 
-    Tried in order per element: within SIDE_BAND_MM of a floor edge -> that
-    side's wall (plates included); slab-shaped -> the top slab when its
-    underside clears the bottom floor's top (floor_top, local z) by
+    Components are found per axis, then served greedily, longest extent along
+    its own axis first (ties: X before Y, then smallest element id); each takes
+    the elements no longer component took. So the corner stud of an L goes to
+    the longer branch, and the two branches stay two walls.
+    """
+    boxes = [b for _e, b in upright]
+    ranked: List[Tuple[float, int, int, List[int]]] = []
+    for axis in (0, 1):
+        for members in _components(boxes, axis):
+            extent = (max(boxes[i].hi[axis] for i in members)
+                      - min(boxes[i].lo[axis] for i in members))
+            first = min(upright[i][0].element_id for i in members)
+            ranked.append((-extent, axis, first, members))
+    ranked.sort(key=lambda r: (r[0], r[1], r[2]))
+    taken: Set[int] = set()
+    walls: List[Tuple[bool, List[ObjectSnapshot]]] = []
+    for _extent, axis, _first, members in ranked:
+        free = [i for i in members if i not in taken]
+        if free:
+            taken.update(free)
+            walls.append((axis == 0, [upright[i][0] for i in free]))
+    walls.sort(key=lambda w: min(e.element_id for e in w[1]))
+    return walls
+
+
+def _is_fallback_slab(box: LocalBox) -> bool:
+    """Slab-shaped and wider than a wall: plates, though flat, are not slabs."""
+    return (classify(box.lo + box.hi) == "slab"
+            and min(box.size[0], box.size[1]) > cv.WALL_MAX_THICKNESS_MM)
+
+
+def _fallback_groups(loose: Sequence[ObjectSnapshot], frame: ModuleFrame, floor_top: float,
+                     floor_ids: Set[int]
+                     ) -> List[Tuple[str, str, List[ObjectSnapshot], Optional[bool]]]:
+    """(kind, label, elements, along_x) groups for elements outside any part subgroup.
+
+    Tried in order per element: part of the bottom floor (floor_ids) -> the
+    bottom slab; within SIDE_BAND_MM of a floor edge -> that side's wall
+    (plates included); slab-shaped and wider than a wall -> the top slab when
+    its underside clears the bottom floor's top (floor_top, local z) by
     TOP_FLOOR_MIN_CLEARANCE_MM, else the bottom slab; upright -> an interior
-    wall, one per connected set; anything else -> other.
+    wall (see _interior_walls); anything else, interior plates included ->
+    other. along_x is set for interior walls only.
     """
     slabs: Dict[str, List[ObjectSnapshot]] = {}
     sides: Dict[str, List[ObjectSnapshot]] = {}
@@ -407,9 +461,11 @@ def _fallback_groups(loose: Sequence[ObjectSnapshot], frame: ModuleFrame, floor_
     for e in _with_vertices(loose):
         box = frame.box_of(e.vertices)
         side = _band_side(box, frame)
-        if side is not None:
+        if e.element_id in floor_ids:
+            slabs.setdefault("bottom", []).append(e)
+        elif side is not None:
             sides.setdefault(side, []).append(e)
-        elif classify(box.lo + box.hi) == "slab":
+        elif _is_fallback_slab(box):
             level = ("top" if box.lo[2] >= floor_top + cv.TOP_FLOOR_MIN_CLEARANCE_MM
                      else "bottom")
             slabs.setdefault(level, []).append(e)
@@ -417,15 +473,14 @@ def _fallback_groups(loose: Sequence[ObjectSnapshot], frame: ModuleFrame, floor_
             upright.append((e, box))
         else:
             others.append(e)
-    interior = [[upright[i][0] for i in members]
-                for members in _components([b for _e, b in upright])]
-    interior.sort(key=lambda members: min(e.element_id for e in members))
-    groups: List[Tuple[str, str, List[ObjectSnapshot]]] = []
-    groups += [("slab", level, slabs[level]) for level in ("bottom", "top") if level in slabs]
-    groups += [("wall", side, sides[side]) for side in SIDES if side in sides]
-    groups += [("wall", "interior", members) for members in interior]
+    groups: List[Tuple[str, str, List[ObjectSnapshot], Optional[bool]]] = []
+    groups += [("slab", level, slabs[level], None) for level in ("bottom", "top")
+               if level in slabs]
+    groups += [("wall", side, sides[side], None) for side in SIDES if side in sides]
+    groups += [("wall", "interior", members, along_x)
+               for along_x, members in _interior_walls(upright)]
     if others:
-        groups.append(("other", "", others))
+        groups.append(("other", "", others, None))
     return groups
 
 
@@ -497,12 +552,14 @@ def _geo_groups(module: _Module, frame: ModuleFrame,
                 floor: Sequence[ObjectSnapshot]) -> List[_GeoGroup]:
     """Fallback objects of a detailed module, walls built so they can take openings."""
     floor_top = max(frame.box_of(e.vertices).hi[2] for e in floor)
+    floor_ids = {e.element_id for e in floor}
     groups = []
-    for n, (kind, label, elements) in enumerate(
-            _fallback_groups(module.loose, frame, floor_top), start=1):
+    for n, (kind, label, elements, along_x) in enumerate(
+            _fallback_groups(module.loose, frame, floor_top, floor_ids), start=1):
         group = _GeoGroup(f"{module.module_id}-geo{n}", kind, label, elements)
         if kind == "wall":
-            group.wall = _make_wall(group.object_id, elements, frame, check_union=False)
+            group.wall = _make_wall(group.object_id, elements, frame, check_union=False,
+                                    along=along_x)
         groups.append(group)
     return groups
 
@@ -605,6 +662,10 @@ def build_object_inventory(snapshots: Sequence[ObjectSnapshot],
             entry["objects"] = objects
         else:
             entry["unclassified_element_count"] = len(module.loose)
+            # Joinery of this module in no subgroup wall: the detail places it
+            # in a fallback wall or reports it as other.
+            entry["unplaced_joinery_ids"] = sorted(
+                j.element_id for j in orphans_by_module.get(module_id, []))
         entries.append(entry)
 
     return {

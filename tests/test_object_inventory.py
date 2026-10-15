@@ -233,6 +233,21 @@ class Openings(unittest.TestCase):
         entry = module_entry(build_object_inventory(self.geometry_module()), "M2")
         self.assertEqual(entry["counts"].get("other", 0), 0)
 
+    def test_the_summary_lists_the_joinery_it_cannot_place(self) -> None:
+        snaps = [element(1, box(0, 0, 0, 6000, 2500, 220), name="OSB", module="M5"),
+                 element(2, box(0, 0, 220, 6000, 200, 2865), name="OSB mur", module="M5"),
+                 element(50, box(1000, 0, 310, 2455, 200, 2625), name="MEX type B",
+                         module="M5"),
+                 element(51, box(3000, 0, 310, 4455, 200, 2625), name="MEX type B")]
+        summary = build_object_inventory(snaps)
+        self.assertEqual(module_entry(summary, "M5")["unplaced_joinery_ids"], [50])
+        self.assertEqual(summary["unattached_element_ids"], [51])
+        self.assertEqual(module_entry(build_object_inventory(module_m1()))["unplaced_joinery_ids"],
+                         [])
+        detailed = build_object_inventory(snaps, module_ids=["M5"])
+        self.assertNotIn("unplaced_joinery_ids", module_entry(detailed, "M5"))
+        self.assertEqual(detailed["unattached_element_ids"], [])
+
 
 class ModuleAssignment(unittest.TestCase):
     def test_a_disagreeing_module_attribute_is_warned_and_the_subgroup_wins(self) -> None:
@@ -359,6 +374,56 @@ class GeometricFallback(unittest.TestCase):
         self.assertEqual((walls[0]["start"], walls[0]["end"], walls[0]["side"]),
                          ([3050, 500, 220], [3050, 1745, 220], None))
         self.assertFalse(any(o["type"] == "other" for o in entry["objects"]))
+
+    def test_an_l_partition_of_studs_is_two_walls(self) -> None:
+        # Branch A along x (studs 10-12), branch B along y (studs 20-22); stud 20
+        # is the corner and goes to the longer branch, A.
+        snaps = [element(1, box(0, 0, 0, 6000, 2500, 220), name="OSB", module="M5")]
+        snaps += [element(10 + n, box(x, 1200, 220, x + 45, 1300, 2865), name="montant",
+                          module="M5") for n, x in enumerate((500, 1100, 1700))]
+        snaps += [element(20 + n, box(2000, y, 220, 2100, y + 45, 2865), name="montant",
+                          module="M5") for n, y in enumerate((1200, 1700, 2000))]
+        entry = module_entry(build_object_inventory(snaps, module_ids=["M5"]), "M5")
+        walls = [(o["element_ids"], o["start"], o["end"], o["thickness"])
+                 for o in entry["objects"] if o["type"] == "wall"]
+        self.assertEqual(walls, [([10, 11, 12, 20], [500, 1250, 220], [2100, 1250, 220], 100),
+                                 ([21, 22], [2050, 1700, 220], [2050, 2045, 220], 100)])
+
+    def test_a_t_of_panels_is_two_walls(self) -> None:
+        # A along x ends against B along y; their centres share y = 1250.
+        snaps = [element(1, box(0, 0, 0, 6000, 2500, 220), name="OSB", module="M5"),
+                 element(2, box(500, 1200, 220, 3000, 1300, 2865), name="cloison A",
+                         module="M5"),
+                 element(3, box(3100, 300, 220, 3200, 2200, 2865), name="cloison B",
+                         module="M5")]
+        entry = module_entry(build_object_inventory(snaps, module_ids=["M5"]), "M5")
+        walls = [(o["element_ids"], o["start"], o["end"]) for o in entry["objects"]
+                 if o["type"] == "wall"]
+        self.assertEqual(walls, [([2], [500, 1250, 220], [3000, 1250, 220]),
+                                 ([3], [3150, 300, 220], [3150, 2200, 220])])
+
+    def test_a_floor_strip_in_a_side_band_stays_in_the_bottom_slab(self) -> None:
+        snaps = [element(1, box(0, 350, 0, 6000, 2500, 22), name="OSB", module="M5"),
+                 element(2, box(0, 0, 0, 6000, 350, 22), name="OSB rive", module="M5"),
+                 element(3, box(0, 0, 22, 6000, 200, 2665), name="OSB mur", module="M5")]
+        entry = module_entry(build_object_inventory(snaps, module_ids=["M5"]), "M5")
+        kinds = [(o["type"], o.get("level"), o.get("side"), o["element_ids"])
+                 for o in entry["objects"]]
+        self.assertEqual(kinds, [("slab", "bottom", None, [1, 2]), ("wall", None, "-y", [3])])
+        self.assertEqual(entry["objects"][1]["start"], [0, 100, 22])
+
+    def test_interior_plates_are_neither_slabs_nor_floor(self) -> None:
+        snaps = [element(1, box(0, 0, 0, 6000, 2500, 220), name="OSB", module="M5"),
+                 element(2, box(1000, 1200, 220, 4000, 1300, 265), name="lisse basse",
+                         module="M5"),
+                 element(3, box(1000, 1200, 2820, 4000, 1300, 2865), name="lisse haute",
+                         module="M5"),
+                 element(4, box(1000, 1200, 265, 4000, 1215, 2820), name="plaque",
+                         module="M5")]
+        entry = module_entry(build_object_inventory(snaps, module_ids=["M5"]), "M5")
+        kinds = [(o["type"], o.get("level"), o["element_ids"]) for o in entry["objects"]]
+        self.assertEqual(kinds, [("slab", "bottom", [1]), ("wall", None, [4]),
+                                 ("other", None, [2, 3])])
 
     def test_interior_walls_do_not_depend_on_the_element_order(self) -> None:
         # Each element shares a plane with its neighbour, not with the far one.
