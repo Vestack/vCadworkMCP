@@ -1,4 +1,4 @@
-# 📋 Manual installation — Cadwork MCP Bridge plugin
+# 📋 Manual installation — vCadworkMCP Bridge plugin
 
 ## 🎯 Copy instructions
 
@@ -16,7 +16,7 @@ C:\Users\Public\Documents\cadwork\userprofil_xx\3d\API.x64
 ### Step 2: copy the plugin
 1. Copy this **entire `MCPBridge` folder**:
 ```
-C:\cadworkMCP\API.x64\MCPBridge\
+<checkout>\API.x64\MCPBridge\
 ```
 
 2. **Paste** it into Cadwork's API.x64 directory:
@@ -41,7 +41,7 @@ checkout of this repository. Tell it where that checkout is, by either setting t
 `MCPBridge.py` with the path on its first line:
 
 ```
-C:\Users\you\Developpements\cadworkMCP
+C:\Users\you\Developpements\vCadworkMCP
 ```
 
 Without either it falls back to `C:\cadworkMCP`. The GUI displays the path it
@@ -67,8 +67,8 @@ resolved, so a wrong setting is visible before you press Start.
 Once the plugin has started the bridge, Claude Desktop launches the MCP server on its own (see the main [`README.md`](../../README.md)). To run it by hand for debugging:
 
 ```bash
-cd C:\cadworkMCP
-python main.py
+cd <checkout>
+.venv\Scripts\python main.py
 ```
 
 External tools such as Claude can then drive Cadwork.
@@ -89,7 +89,7 @@ External tools such as Claude can then drive Cadwork.
 
 ### The bridge does not start
 - Is **port 53002** free? (check for another running bridge)
-- Are the **Python paths** correct? The bridge expects `C:\cadworkMCP`
+- Are the **Python paths** correct? The GUI shows which checkout the plugin resolved (`CADWORK_MCP_HOME`, then `mcp_home.txt`, then `C:\cadworkMCP`)
 - Check the **Cadwork console** for error messages
 
 ### The connection fails

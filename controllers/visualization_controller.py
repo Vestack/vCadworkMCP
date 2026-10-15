@@ -1,5 +1,5 @@
 """
-Visualization Controller for Cadwork MCP Server
+Visualization Controller for the vCadworkMCP server
 Manages colors, transparency and visibility of elements
 """
 from typing import Dict, Any, List, Optional

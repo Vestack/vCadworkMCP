@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this project is
 
-An MCP (Model Context Protocol) server that lets an AI assistant drive **Cadwork 3D** (timber-construction CAD). It is **two processes**, not one:
+**vCadworkMCP** (repository `Vestack/vCadworkMCP`, formerly `cadworkMCP`): Vestack's MCP (Model Context Protocol) server that lets an AI assistant drive **Cadwork 3D** (timber-construction CAD). The `v` prefix marks it as a Vestack tool, like vMES; it is not a Cadwork product. Keep "Cadwork" for what refers to Cadwork itself (`import cadwork`, `cwapi3d`, `get_cadwork_axis_info`, "for Cadwork 3D"), and the product name for this project. It is **two processes**, not one:
 
 1. **MCP server** (`main.py`) — runs outside Cadwork, launched by the MCP client (Claude Desktop) over stdio. Exposes 167 `@mcp.tool` definitions.
 2. **Bridge** (`cadwork_bridge.py` + `bridge/`) — runs *inside* Cadwork's embedded Python interpreter, started from the Cadwork plugin GUI. Owns a TCP socket server and is the only code allowed to touch the real cadwork API.

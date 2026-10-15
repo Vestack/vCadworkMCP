@@ -1,8 +1,8 @@
-# Cadwork MCP Server
+# vCadworkMCP
 
-A **Model Context Protocol (MCP) server** for Cadwork 3D that lets Claude and other AI assistants interact directly with Cadwork 3D.
+Vestack's **Model Context Protocol (MCP) server** for Cadwork 3D that lets Claude and other AI assistants interact directly with Cadwork 3D.
 
-> **About this document.** This is the English translation of the original German README, kept as [`README_DE.md`](README_DE.md). The function inventory below is the author's roadmap: **29 of the declared tools have no implementation** and answer `Unknown operation` — the exact list is in [`.claude/skills/cadwork-model/tool-inventory.md`](.claude/skills/cadwork-model/tool-inventory.md), generated from the code. See [`CLAUDE.md`](CLAUDE.md) for the verified architecture.
+> **About this document.** This is the English translation of the original German README, kept as [`README_DE.md`](README_DE.md). The function inventory below is the author's roadmap: **26 of the declared tools have no implementation** and answer `Unknown operation` — the exact list is in [`.claude/skills/cadwork-model/tool-inventory.md`](.claude/skills/cadwork-model/tool-inventory.md), generated from the code. See [`CLAUDE.md`](CLAUDE.md) for the verified architecture.
 
 > **Driving a model with an AI assistant?** Read the [`cadwork-model` skill](.claude/skills/cadwork-model/SKILL.md) first. It frames the two use cases — reading a model (module inventory, element counts) and changing one (the guarded procedure for moving an element) — and there is no undo on the write path.
 
@@ -19,7 +19,7 @@ step 3).
 
 ```bash
 git clone <repository-url>
-cd cadworkMCP
+cd vCadworkMCP
 python -m venv .venv
 .venv\Scripts\python -m pip install -r requirements.txt
 ```
@@ -56,9 +56,9 @@ its PATH — which will not have `mcp` installed:
 ```json
 {
   "mcpServers": {
-    "cadwork": {
-      "command": "C:\\path\\to\\cadworkMCP\\.venv\\Scripts\\python.exe",
-      "args": ["C:\\path\\to\\cadworkMCP\\main.py"],
+    "vcadwork": {
+      "command": "C:\\path\\to\\vCadworkMCP\\.venv\\Scripts\\python.exe",
+      "args": ["C:\\path\\to\\vCadworkMCP\\main.py"],
       "env": { "CW_PORT": "53002" }
     }
   }
@@ -202,7 +202,7 @@ commit `8e01527` and is unrelated.
 ## 🏗️ Project structure
 
 ```
-cadworkMCP/                 # anywhere on disk
+vCadworkMCP/                # anywhere on disk
 ├── main.py                 # Main MCP server with all tool definitions
 ├── requirements.txt        # Python dependencies
 ├── mypy.ini                # Mypy configuration for type safety

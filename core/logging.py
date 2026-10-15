@@ -7,7 +7,7 @@ from typing import Optional
 # Global logger instance
 _logger: Optional[logging.Logger] = None
 
-def setup_logging(name: str = "CadworkMCP", level: int = logging.INFO) -> None:
+def setup_logging(name: str = "vCadworkMCP", level: int = logging.INFO) -> None:
     """Setup basic logging configuration"""
     global _logger
     

@@ -1,5 +1,5 @@
 """
-Core module for Cadwork MCP Server
+Core module for the vCadworkMCP server
 """
 
 from .connection import CadworkConnection

@@ -1,5 +1,5 @@
 """
-Cadwork MCP Bridge Plugin - Simple Start/Stop GUI
+vCadworkMCP Bridge Plugin - Simple Start/Stop GUI
 
 This file lives in the Cadwork user profile, away from the repository, so it has
 to be told where the repository is. See resolve_mcp_home() for how it decides.
@@ -21,7 +21,7 @@ LEGACY_HOME = r'C:\cadworkMCP'
 bridge_running = False
 
 def resolve_mcp_home() -> str:
-    """Locate the cadworkMCP checkout.
+    """Locate the vCadworkMCP checkout.
 
     In order:
       1. the CADWORK_MCP_HOME environment variable,
@@ -56,7 +56,7 @@ def resolve_mcp_home() -> str:
             return candidate
 
     raise FileNotFoundError(
-        "cadworkMCP checkout not found. Looked in: "
+        "vCadworkMCP checkout not found. Looked in: "
         + ", ".join(candidates)
         + ". Set CADWORK_MCP_HOME, or put the path in mcp_home.txt next to "
         + "MCPBridge.py."
@@ -140,7 +140,7 @@ class BridgeGUI:
         self.root.resizable(False, False)
         
         # Title
-        title_label = ttk.Label(self.root, text="Cadwork MCP Bridge", 
+        title_label = ttk.Label(self.root, text="vCadworkMCP Bridge", 
                                font=("Arial", 14, "bold"))
         title_label.pack(pady=15)
         

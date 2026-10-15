@@ -1,5 +1,5 @@
 """
-Machine Controller for Cadwork MCP Server
+Machine Controller for the vCadworkMCP server
 Manages CNC and production-specific functions for manufacturing planning
 """
 from typing import Dict, Any

@@ -1,5 +1,5 @@
 """
-Shop Drawing Controller for Cadwork MCP Server
+Shop Drawing Controller for the vCadworkMCP server
 Manages shop drawing-specific functions for production planning
 """
 from typing import Dict, Any, Optional

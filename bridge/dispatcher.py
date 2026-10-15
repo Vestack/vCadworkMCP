@@ -1,4 +1,4 @@
-"""Command dispatcher for the Cadwork MCP bridge.
+"""Command dispatcher for the vCadworkMCP bridge.
 
 Single entry point for everything arriving on the bridge socket. Operations are
 discovered by convention: any `handle_<operation>(args) -> dict` in a registered

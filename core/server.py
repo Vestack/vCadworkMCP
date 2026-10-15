@@ -13,7 +13,7 @@ async def server_lifespan(server: FastMCP) -> AsyncIterator[Dict[str, Any]]:
     """Manage server lifecycle"""
     # Setup logging
     setup_logging()
-    log_info("Starting Cadwork MCP Server...")
+    log_info("Starting vCadworkMCP server...")
     
     # Initialize connection
     host = "127.0.0.1"
@@ -30,9 +30,9 @@ async def server_lifespan(server: FastMCP) -> AsyncIterator[Dict[str, Any]]:
     yield {"cadwork_connected": handshake_ok}
     
     # Cleanup
-    log_info("Shutting down Cadwork MCP Server...")
+    log_info("Shutting down vCadworkMCP server...")
 
-SERVER_NAME = "CadworkMCP"
+SERVER_NAME = "vCadworkMCP"
 SERVER_VERSION = "0.2.0"
 
 

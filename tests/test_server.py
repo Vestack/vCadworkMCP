@@ -22,7 +22,7 @@ class CreateMcpServer(unittest.TestCase):
 
     def test_the_server_is_named_for_cadwork(self) -> None:
         from core.server import create_mcp_server
-        self.assertEqual(create_mcp_server().name, "CadworkMCP")
+        self.assertEqual(create_mcp_server().name, "vCadworkMCP")
 
     def test_exposes_the_object_the_http_transport_passes_to_uvicorn(self) -> None:
         # main.py used to hand uvicorn a non-existent `mcp.app`.

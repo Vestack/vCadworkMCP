@@ -1,5 +1,5 @@
 """
-Roof Controller for Cadwork MCP Server
+Roof Controller for the vCadworkMCP server
 Manages roof-specific CAD functions for carpentry and roof construction
 """
 from typing import Dict, Any, List

@@ -1,5 +1,5 @@
 """
-Utility Controller for Cadwork MCP Server
+Utility Controller for the vCadworkMCP server
 Manages display refresh, output functions and system utilities
 """
 from typing import Dict, Any

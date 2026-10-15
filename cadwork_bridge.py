@@ -24,7 +24,7 @@ def socket_server():
         srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         srv.bind(server_address)
         srv.listen(1)
-        print(f"✓ Cadwork MCP Bridge listening on {HOST}:{PORT}")
+        print(f"✓ vCadworkMCP bridge listening on {HOST}:{PORT}")
     except Exception as e:
         print(f"!!! Server setup failed: {e}")
         if srv:
@@ -97,7 +97,7 @@ def socket_server():
 
 def main():
     """Main entry point"""
-    print("\n--- Starting Cadwork MCP Bridge v2.0 ---")
+    print("\n--- Starting vCadworkMCP bridge v2.0 ---")
     
     # Check if port is available
     try:
