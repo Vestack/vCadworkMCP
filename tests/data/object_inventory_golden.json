@@ -1,0 +1,300 @@
+{
+ "status": "ok",
+ "schema": "vestack.object_inventory/1",
+ "source": {
+  "file": "fixture.3d",
+  "extracted_at": "2026-10-15T14:02:00+02:00"
+ },
+ "modules": [
+  {
+   "module_id": "M1",
+   "grouping_source": "subgroup",
+   "frame": {
+    "origin_model": [
+     500,
+     800,
+     0
+    ],
+    "x_axis_model": [
+     0.798636,
+     0.601815,
+     0.0
+    ],
+    "y_axis_model": [
+     -0.601815,
+     0.798636,
+     0.0
+    ],
+    "z_axis_model": [
+     0.0,
+     0.0,
+     1.0
+    ],
+    "length": 6000,
+    "width": 2500,
+    "height": 3400
+   },
+   "counts": {
+    "slab": 1,
+    "wall": 2,
+    "roof": 1,
+    "other": 1,
+    "opening": 1
+   },
+   "warnings": [],
+   "objects": [
+    {
+     "id": "M1-F1",
+     "type": "slab",
+     "level": "bottom",
+     "origin": [
+      0,
+      0,
+      0
+     ],
+     "length": 6000,
+     "width": 2500,
+     "thickness": 220,
+     "element_ids": [
+      1,
+      2
+     ],
+     "warnings": [],
+     "elements": [
+      {
+       "element_id": 1,
+       "name": "OSB 9mm",
+       "material": "OSB-9",
+       "origin": [
+        0,
+        0,
+        0
+       ],
+       "size": [
+        3000,
+        2500,
+        220
+       ]
+      },
+      {
+       "element_id": 2,
+       "name": "OSB 9mm",
+       "material": "OSB-9",
+       "origin": [
+        3000,
+        0,
+        0
+       ],
+       "size": [
+        3000,
+        2500,
+        220
+       ]
+      }
+     ]
+    },
+    {
+     "id": "M1-Poteaux",
+     "type": "other",
+     "part": "Poteaux",
+     "origin": [
+      2900,
+      1150,
+      220
+     ],
+     "size": [
+      200,
+      200,
+      2645
+     ],
+     "element_ids": [
+      40
+     ],
+     "warnings": [],
+     "elements": [
+      {
+       "element_id": 40,
+       "name": "poteau",
+       "material": "",
+       "origin": [
+        2900,
+        1150,
+        220
+       ],
+       "size": [
+        200,
+        200,
+        2645
+       ]
+      }
+     ]
+    },
+    {
+     "id": "M1-TF0",
+     "type": "roof",
+     "part": "TF",
+     "origin": [
+      0,
+      0,
+      2865
+     ],
+     "size": [
+      6000,
+      2500,
+      535
+     ],
+     "element_ids": [
+      30
+     ],
+     "warnings": [],
+     "elements": [
+      {
+       "element_id": 30,
+       "name": "fermette",
+       "material": "",
+       "origin": [
+        0,
+        0,
+        2865
+       ],
+       "size": [
+        6000,
+        2500,
+        535
+       ]
+      }
+     ]
+    },
+    {
+     "id": "M1-W1",
+     "type": "wall",
+     "wall_type": "MOB200",
+     "stud_section": 200,
+     "side": "-y",
+     "start": [
+      0,
+      106,
+      220
+     ],
+     "end": [
+      6000,
+      106,
+      220
+     ],
+     "thickness": 212,
+     "height": 2645,
+     "openings": [
+      {
+       "id": "M1-W1-O1",
+       "name": "MEX type B",
+       "offset": 1000,
+       "sill": 90,
+       "width": 1455,
+       "height": 2315,
+       "element_ids": [
+        50
+       ]
+      }
+     ],
+     "element_ids": [
+      10,
+      11,
+      12
+     ],
+     "warnings": [],
+     "elements": [
+      {
+       "element_id": 10,
+       "name": "MOB200",
+       "material": "",
+       "origin": [
+        0,
+        0,
+        220
+       ],
+       "size": [
+        6000,
+        212,
+        2645
+       ]
+      },
+      {
+       "element_id": 11,
+       "name": "montant",
+       "material": "C24",
+       "origin": [
+        0,
+        6,
+        220
+       ],
+       "size": [
+        45,
+        200,
+        2645
+       ]
+      },
+      {
+       "element_id": 12,
+       "name": "montant",
+       "material": "C24",
+       "origin": [
+        955,
+        6,
+        220
+       ],
+       "size": [
+        45,
+        200,
+        2645
+       ]
+      }
+     ]
+    },
+    {
+     "id": "M1-W2",
+     "type": "wall",
+     "wall_type": "MOB145",
+     "stud_section": 145,
+     "side": "+x",
+     "start": [
+      5928,
+      212,
+      220
+     ],
+     "end": [
+      5928,
+      2288,
+      220
+     ],
+     "thickness": 145,
+     "height": 2645,
+     "openings": [],
+     "element_ids": [
+      20
+     ],
+     "warnings": [],
+     "elements": [
+      {
+       "element_id": 20,
+       "name": "MOB145",
+       "material": "",
+       "origin": [
+        5855,
+        212,
+        220
+       ],
+       "size": [
+        145,
+        2076,
+        2645
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "unattached_element_ids": [],
+ "processing_element_count": 1,
+ "warnings": []
+}
