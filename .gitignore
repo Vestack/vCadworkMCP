@@ -186,7 +186,8 @@ uv.lock
 
 bim_timber_clean.json
 rag_db
-/docs
+/docs/*
+!/docs/superpowers/
 .github
 bim.duckdb
 client_test.py
