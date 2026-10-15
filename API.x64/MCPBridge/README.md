@@ -53,8 +53,8 @@ resolved, so a wrong setting is visible before you press Start.
 - Close **Cadwork 3D** and open it again
 
 ### 2. Activate the plugin
-- **Window → Plugins** (show the plugin bar)
-- The **MCP Bridge** button appears
+- **Fenêtre → Plugins utilisateur** in the French UI (shows the user-plugin panel)
+- The plugin appears as **Controle du Pont MCP** (MCP Bridge Control in an English profile)
 - **Click** the button to launch the plugin
 
 ### 3. Start the bridge

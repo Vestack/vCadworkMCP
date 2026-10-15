@@ -86,10 +86,16 @@ controller method calls `send_command` before listing it as one.
 
 **How far verification actually goes.** The server starts, reaches its lifespan
 handler and sends its `ping` to the bridge. Discovery finds all 140 operations,
-and mypy checks every handler call site against the Cadwork 30 stubs. What has
-*not* happened: a single operation executed against a live model. The stubs
+and mypy checks every handler call site against the Cadwork 30 stubs. The stubs
 type-check but do nothing, so passing mypy says the call is well-formed, not that
-Cadwork accepts it. Treat the first real call as the verification.
+Cadwork accepts it. Only these have run against a live model (Cadwork 2026,
+15/10/2026, read-only): `ping`, `get_3d_file_path`, `get_all_element_ids`,
+`get_active_element_ids`, `get_standard_attributes`, `get_user_attributes`,
+`list_defined_user_attributes`, `get_element_info`, `get_element_vertices`.
+Every other handler, and every write, is still unverified. That model names
+modules `M1`…`M24`, which `vestack/conventions.py:MODULE_ID_PATTERN` (`M\d{3}`)
+does not match, so `get_module_inventory` finds no module in it; the fix is
+specified in `docs/superpowers/specs/2026-10-15-object-inventory-design.md`.
 
 **Other loose ends.** `bridge/handlers/base_handler.py:BaseHandler.safe_call` is
 dead code, called from nowhere. `create_auto_container_from_standard` and
@@ -117,7 +123,9 @@ describes the abandoned "no handlers layer" refactor — read it as history.
   succeeding proves nothing about a call working.
 - `mcp` must stay below 2.0: the 2.x line removed `mcp.server.fastmcp`, which
   `main.py` and `core/server.py` import.
-- The bridge is started by hand in Cadwork: **Window → Plugins → MCP Bridge → Start Bridge**. After editing bridge-side files, Stop/Start is not sufficient for already-imported modules — restart Cadwork.
+- The bridge is started by hand in Cadwork: **Fenêtre → Plugins utilisateur** (French UI) shows the user-plugin panel; click **Controle du Pont MCP** (named MCP Bridge Control in an English profile), then **Start Bridge** in the window it opens. There is no "Start Bridge" menu entry, and Cadwork's own **Bridge BETA** is unrelated. After editing bridge-side files, Stop/Start is not sufficient for already-imported modules — restart Cadwork.
+- **The bridge does not answer while a Cadwork command is active**: even `ping` times out until the modeller presses Escape. The plugin window may be open or closed, it makes no difference.
+- **Production runs on Cadwork 2026.** First live calls (15/10/2026, read-only) work, but three handlers are broken by 2026 API changes: `get_project_data` (the 2026 function takes a `str` argument), `get_version_info` (`utility_controller.get_cadwork_version_info` is gone) and `get_element_type` (`element_controller.get_element_type` is gone).
 - `stop_bridge()` in the plugin only flips a boolean; it neither closes the socket nor stops the daemon thread.
 
 ## Commands

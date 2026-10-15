@@ -20,7 +20,7 @@ path it resolved, so a wrong setting is visible before you press Start.
 
 ## Usage
 1. Start Cadwork
-2. Window → Plugins → MCP Bridge
+2. User-plugin panel (Fenêtre → Plugins utilisateur in the French UI) → Controle du Pont MCP
 3. "Start Bridge" - the plugin imports `cadwork_bridge` from the checkout and
    starts its socket server on port 53002, then connects to it to confirm it is
    really listening before reporting success

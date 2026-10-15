@@ -39,8 +39,8 @@ then point it at this checkout — either set `CADWORK_MCP_HOME`, or create
 
 **Starting the bridge:**
 1. Start Cadwork 3D
-2. Go to **Window → Plugins → MCP Bridge**
-3. Click **"Start Bridge"** to open the connection
+2. Open the user-plugin panel (**Fenêtre → Plugins utilisateur** in the French UI) and click **Controle du Pont MCP** (MCP Bridge Control)
+3. Click **"Start Bridge"** in the window that opens
 4. After changing bridge code: **"Stop Bridge"** → **"Start Bridge"** to restart (restart Cadwork if modules were already imported)
 
 ### 4. Configure Claude Desktop

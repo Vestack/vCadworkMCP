@@ -105,7 +105,7 @@ Everything unmarked is read-only.
 - `get_element_p2`
 - `get_element_p3`
 - `get_element_reference_face_area`
-- `get_element_type`
+- `get_element_type` — broken under Cadwork 2026
 - `get_element_vertices`
 - `get_element_volume`
 - `get_element_weight`
@@ -158,8 +158,8 @@ Everything unmarked is read-only.
 - `disable_auto_display_refresh`
 - `enable_auto_display_refresh`
 - `get_3d_file_path`
-- `get_cadwork_version_info`
-- `get_project_data`
+- `get_cadwork_version_info` — broken under Cadwork 2026
+- `get_project_data` — broken under Cadwork 2026
 - `print_error`
 - `print_warning`
 
