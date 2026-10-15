@@ -25,16 +25,26 @@ def current() -> Dict[str, Any]:
     return round_tripped
 
 
+def serialise(inventory: Dict[str, Any]) -> str:
+    """The golden file's text: indent 1, UTF-8 characters kept, final newline."""
+    return json.dumps(inventory, ensure_ascii=False, indent=1) + "\n"
+
+
 class Golden(unittest.TestCase):
     def test_the_output_matches_the_golden_file(self) -> None:
         self.assertEqual(current(), json.loads(GOLDEN.read_text(encoding="utf-8")))
+
+    def test_the_serialised_text_matches_the_golden_file(self) -> None:
+        # assertEqual on dicts takes 6000 for 6000.0; the text also pins number
+        # types, key order and line endings.
+        text = GOLDEN.read_bytes().decode("utf-8")
+        self.assertEqual(serialise(current()), text)
 
 
 if __name__ == "__main__":
     if "--regenerate" in sys.argv:
         GOLDEN.parent.mkdir(exist_ok=True)
-        GOLDEN.write_text(json.dumps(current(), ensure_ascii=False, indent=1) + "\n",
-                          encoding="utf-8")
+        GOLDEN.write_text(serialise(current()), encoding="utf-8", newline="\n")
         print(f"wrote {GOLDEN}")
     else:
         unittest.main()
