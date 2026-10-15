@@ -1,5 +1,6 @@
 """Tests for the module frame. Pure geometry, no Cadwork."""
 import math
+import random
 import unittest
 from typing import List, Sequence, Tuple
 
@@ -62,10 +63,36 @@ class Orientation(unittest.TestCase):
         self.assertAlmostEqual(frame.length, 6000, delta=0.01)
         self.assertAlmostEqual(frame.width, 2500, delta=0.01)
 
+    def test_a_floor_rotated_by_270_degrees_keeps_x_on_plus_y(self) -> None:
+        frame = frame_from_floor(rotated(FLOOR, 270, shift=(10000, 5000, 0)))
+        assert frame is not None
+        self.assertVector(frame.x_axis, (0, 1, 0))
+
+    def test_a_floor_rotated_by_minus_90_degrees_keeps_x_on_plus_y(self) -> None:
+        frame = frame_from_floor(rotated(FLOOR, -90, shift=(10000, 5000, 0)))
+        assert frame is not None
+        self.assertVector(frame.x_axis, (0, 1, 0))
+
+    def test_noise_around_90_degrees_does_not_flip_x(self) -> None:
+        for degrees in (89.9999, 90.0001, 269.9999, 270.0001):
+            with self.subTest(degrees=degrees):
+                frame = frame_from_floor(rotated(FLOOR, degrees))
+                assert frame is not None
+                self.assertVector(frame.x_axis, (0, 1, 0))
+
+    def test_micrometre_jitter_at_90_degrees_does_not_flip_x(self) -> None:
+        rng = random.Random(1)
+        for _ in range(50):
+            points = [(x + rng.uniform(-0.0006, 0.0006), y + rng.uniform(-0.0006, 0.0006), z)
+                      for x, y, z in rotated(FLOOR, 90, shift=(10000, 5000, 0))]
+            frame = frame_from_floor(points)
+            assert frame is not None
+            self.assertVector(frame.x_axis, (0, 1, 0))
+
     def test_180_degree_tie_break_keeps_x_within_90_degrees_of_plus_x(self) -> None:
         frame = frame_from_floor(rotated(FLOOR, 180 + 37))
         assert frame is not None
-        self.assertGreater(frame.x_axis[0], 0)
+        self.assertVector(frame.x_axis, (math.cos(math.radians(37)), math.sin(math.radians(37)), 0))
 
     def test_every_floor_vertex_has_non_negative_local_coordinates(self) -> None:
         points = rotated(FLOOR, 123, shift=(-4000, 2000, 50))

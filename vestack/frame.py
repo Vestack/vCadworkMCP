@@ -14,6 +14,9 @@ Point2 = Tuple[float, float]
 Point3 = Tuple[float, float, float]
 
 _EPS = 1e-9
+# Tolerance for the 90-degree tie-break, in radians: about 0.06 mm over 6 m,
+# above the 0.001 mm hull rounding noise and below modelling precision.
+_ANGLE_EPS = 1e-5
 
 
 def _dot(a: Point3, b: Point3) -> float:
@@ -142,13 +145,13 @@ def frame_from_floor(vertices: Sequence[Point3]) -> Optional[ModuleFrame]:
         return None
     (ux, uy), du, dv = rectangle
     xd = (ux, uy) if du >= dv else (-uy, ux)
-    # 180-degree tie-break: X within 90 degrees of the model's +X; when exactly
-    # perpendicular to it, X is +Y.
-    if xd[0] < -_EPS or (abs(xd[0]) <= _EPS and xd[1] < 0):
+    # 180-degree tie-break: X within 90 degrees of the model's +X; when
+    # perpendicular to it within _ANGLE_EPS, X is +Y.
+    if xd[0] < -_ANGLE_EPS or (abs(xd[0]) <= _ANGLE_EPS and xd[1] < 0):
         xd = (-xd[0], -xd[1])
-    if abs(xd[0]) <= _EPS:
+    if abs(xd[0]) <= _ANGLE_EPS:
         xd = (0.0, 1.0 if xd[1] > 0 else -1.0)
-    if abs(xd[1]) <= _EPS:
+    if abs(xd[1]) <= _ANGLE_EPS:
         xd = (1.0 if xd[0] > 0 else -1.0, 0.0)
     x_axis: Point3 = (xd[0], xd[1], 0.0)
     y_axis: Point3 = (-xd[1] + 0.0, xd[0], 0.0)
