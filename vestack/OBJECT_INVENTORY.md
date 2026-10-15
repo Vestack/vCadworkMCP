@@ -41,8 +41,8 @@ Reference output: `tests/data/object_inventory_golden.json`.
 | `source` | `file` (path of the open model, empty if unavailable), `extracted_at` (ISO 8601 with offset, seconds) |
 | `modules` | one entry per module found, sorted by module number |
 | `unattached_element_count` | number of unattached elements, always present |
-| `unattached_element_ids` | elements with no module; joinery with no module, no readable geometry, or whose module has no frame. Sorted. When no module is detailed and there is no export (no `module_ids`, no `detail_all`), only the first 200 ids are listed |
-| `unattached_element_ids_truncated` | `true` when `unattached_element_ids` lists fewer ids than `unattached_element_count`; always `false` in a detail or an export |
+| `unattached_element_ids` | elements with no module; joinery with no module, no readable geometry, or whose module has no frame. Sorted. When no module is detailed (no `module_ids`, no `detail_all`), only the first 200 ids are listed; the same cap applies to the summary the MCP tool returns with an export that names no module, while the file lists them all |
+| `unattached_element_ids_truncated` | `true` when `unattached_element_ids` lists fewer ids than `unattached_element_count`; always `false` in a detail and in the export file. In the MCP tool's response to an export that names no module, `true` when it dropped ids beyond the first 200 |
 | `processing_element_count` | processing elements (group `Usinage`), counted but never in an object |
 | `warnings` | e.g. `module M5 not found in the scanned elements` for a requested module |
 | `scanned_element_count`, `geometry_read_count`, `skipped_element_ids`, `attribute_numbers` | Cadwork side only: scan statistics |
@@ -79,8 +79,11 @@ differences:
 
 Because every module was read in detail, that summary carries the detail `counts`
 (geometry-grouped objects included) and, for a module with a frame, `frame.height`, and its modules have no
-`unclassified_element_count` or `unplaced_joinery_ids`. It lists every unattached
-id, as the file does (`unattached_element_ids_truncated` is `false`).
+`unclassified_element_count` or `unplaced_joinery_ids`. Unattached ids follow the
+summary rule: when `module_ids` names no module present in the inventory, the response
+lists the first 200 (sorted) and sets `unattached_element_ids_truncated` to `true` if
+it dropped any; otherwise it lists them all, as the file does. The file always lists
+every id.
 
 ## Module entry
 

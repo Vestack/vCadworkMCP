@@ -12,7 +12,7 @@ from typing import Any, Collection, Dict, List, Optional
 
 from controllers.base_controller import BaseController
 from vestack.naming import parse_module_id
-from vestack.object_inventory import DETAIL_LEVELS
+from vestack.object_inventory import DETAIL_LEVELS, UNATTACHED_IDS_IN_SUMMARY
 
 # Reading attributes alone takes about 48 s on a 50 940-element model under
 # Cadwork 2026, beyond the default socket timeout; a full export takes minutes.
@@ -41,14 +41,25 @@ def write_inventory_file(inventory: Dict[str, Any], output_path: str) -> str:
 
 
 def summarise(inventory: Dict[str, Any], keep: Collection[str]) -> Dict[str, Any]:
-    """Copy of a fully detailed inventory keeping objects only for `keep` modules."""
+    """Copy of a fully detailed inventory keeping objects only for `keep` modules.
+
+    Same rule as build_object_inventory for the unattached ids: when no module is
+    detailed, only the first UNATTACHED_IDS_IN_SUMMARY are listed.
+    """
     modules = []
+    detailed = False
     for entry in inventory.get("modules", []):
         if entry["module_id"] in keep:
             modules.append(entry)
+            detailed = True
         else:
             modules.append({k: v for k, v in entry.items() if k != "objects"})
-    return {**inventory, "modules": modules}
+    summary = {**inventory, "modules": modules}
+    ids = inventory.get("unattached_element_ids", [])
+    if not detailed and len(ids) > UNATTACHED_IDS_IN_SUMMARY:
+        summary["unattached_element_ids"] = ids[:UNATTACHED_IDS_IN_SUMMARY]
+        summary["unattached_element_ids_truncated"] = True
+    return summary
 
 
 class VestackController(BaseController):

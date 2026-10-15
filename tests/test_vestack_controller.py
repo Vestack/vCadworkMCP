@@ -14,9 +14,9 @@ import unittest
 from typing import Any, Dict, List, Optional, Tuple
 from unittest.mock import patch
 
-from tests.object_fixtures import module_m1
+from tests.object_fixtures import box, element, module_m1
 from vestack.mcp_controller import OBJECT_INVENTORY_TIMEOUT_S, VestackController
-from vestack.object_inventory import build_object_inventory
+from vestack.object_inventory import UNATTACHED_IDS_IN_SUMMARY, build_object_inventory
 
 Call = Tuple[str, Dict[str, Any], Optional[float]]
 
@@ -25,7 +25,12 @@ PONG: Dict[str, Any] = {"status": "ok"}
 
 
 def run(calls: List[Call], ping: Optional[Dict[str, Any]] = None,
-        threads: Optional[List[int]] = None, **kwargs: Any) -> Dict[str, Any]:
+        threads: Optional[List[int]] = None, loose: int = 0,
+        **kwargs: Any) -> Dict[str, Any]:
+    """Run get_object_inventory against the fixture plus `loose` unattached elements."""
+    snapshots = module_m1() + [element(1000 + i, box(0, 0, 0, 100, 100, 100), name="loose")
+                               for i in range(loose)]
+
     def fake_send(self: Any, operation: str, args: Optional[Dict[str, Any]] = None,
                   timeout: Optional[float] = None) -> Dict[str, Any]:
         args = args or {}
@@ -34,7 +39,7 @@ def run(calls: List[Call], ping: Optional[Dict[str, Any]] = None,
             threads.append(threading.get_ident())
         if operation == "ping":
             return PONG if ping is None else ping
-        return build_object_inventory(module_m1(), module_ids=args.get("module_ids"),
+        return build_object_inventory(snapshots, module_ids=args.get("module_ids"),
                                       detail_all=bool(args.get("detail_all")),
                                       element_detail=args.get("element_detail", "none"))
 
@@ -122,6 +127,25 @@ class FileExport(unittest.TestCase):
     def test_the_response_stays_a_summary_unless_modules_are_named(self) -> None:
         self.assertNotIn("objects", run([], output_path=self.path)["modules"][0])
         self.assertIn("objects", run([], output_path=self.path, module_ids=["M001"])["modules"][0])
+
+    def test_the_response_caps_the_unattached_ids_but_the_file_lists_them_all(self) -> None:
+        response = run([], output_path=self.path, loose=250)
+        with open(self.path, encoding="utf-8") as stream:
+            written = json.load(stream)
+        self.assertEqual(len(written["unattached_element_ids"]), 250)
+        self.assertFalse(written["unattached_element_ids_truncated"])
+        self.assertEqual(response["unattached_element_ids"], written["unattached_element_ids"][:200])
+        self.assertEqual(len(response["unattached_element_ids"]), UNATTACHED_IDS_IN_SUMMARY)
+        self.assertTrue(response["unattached_element_ids_truncated"])
+        self.assertEqual(response["unattached_element_count"], 250)
+
+    def test_the_unattached_ids_stay_whole_when_a_module_is_named_or_under_the_cap(self) -> None:
+        named = run([], output_path=self.path, module_ids=["M1"], loose=250)
+        self.assertEqual(len(named["unattached_element_ids"]), 250)
+        self.assertFalse(named["unattached_element_ids_truncated"])
+        few = run([], output_path=self.path, loose=3)
+        self.assertEqual(len(few["unattached_element_ids"]), 3)
+        self.assertFalse(few["unattached_element_ids_truncated"])
 
     def test_an_unwritable_path_is_an_error_and_leaves_no_file(self) -> None:
         missing = os.path.join(self.directory, "no-such-dir", "inventory.json")
