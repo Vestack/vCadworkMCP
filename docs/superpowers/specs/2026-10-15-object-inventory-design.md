@@ -4,7 +4,7 @@ Date: 15/10/2026. Status: design approved in conversation, spec under review.
 
 ## Context and goal
 
-cadworkMCP has three planned work packages, each separate:
+vCadworkMCP has three planned work packages, each separate:
 
 1. **Positions** (this spec): let Claude check that the elements of a Cadwork
    model are the same as in the Revit model of the same project.
@@ -118,7 +118,7 @@ One schema for the response and the file. Lengths in millimetres, rounded to
   "schema": "vestack.object_inventory/1",
   "source": {"file": "...", "cadwork_version": "...", "extracted_at": "2026-10-15T14:02:00+02:00"},
   "modules": [{
-    "module_id": "M139",
+    "module_id": "M1",
     "grouping_source": "subgroup",
     "frame": {
       "origin_model": [12450, 3200, 0],
@@ -129,16 +129,18 @@ One schema for the response and the file. Lengths in millimetres, rounded to
     },
     "counts": {"wall": 6, "slab": 2, "opening": 3, "other": 0},
     "objects": [{
-      "id": "M139-W1",
+      "id": "M1-W5",
       "type": "wall",
+      "wall_type": "MOB200", "stud_section": 200,
       "side": "-y",
-      "start": [0, 0, 0], "end": [11980, 0, 0],
-      "thickness": 220, "height": 2900,
-      "openings": [{"id": "M139-W1-O1", "offset": 1200, "sill": 900, "width": 1000, "height": 1250}],
+      "start": [0, 0, 0], "end": [3645, 0, 0],
+      "thickness": 212, "height": 2645,
+      "openings": [{"id": "M1-W5-O1", "name": "MEX type B", "offset": 345, "sill": 90, "width": 1455, "height": 2315,
+                    "element_ids": [10240]}],
       "element_ids": [10231, 10232],
       "warnings": []
     }, {
-      "id": "M139-S1", "type": "slab", "level": "bottom",
+      "id": "M1-F1", "type": "slab", "level": "bottom",
       "origin": [0, 0, 0], "length": 11980, "width": 3980, "thickness": 250,
       "element_ids": [10101]
     }],
@@ -150,8 +152,11 @@ One schema for the response and the file. Lengths in millimetres, rounded to
 
 `objects` is present only for detailed modules. Field meanings:
 
+- `id` is the part subgroup (`M1-W5`) when the object was grouped by subgroup,
+  and a generated `<module>-<type letter><n>` under the geometric fallback.
 - **wall**: `start`/`end` are the wall axis at its foot, at mid-thickness, as a
-  Revit wall's location line. `side` is the footprint edge it stands on
+  Revit wall's location line. `wall_type` and `stud_section` come from the
+  wall's `MOB<section>` body element, `null` without one. `side` is the footprint edge it stands on
   (`-x`, `+x`, `-y`, `+y` in the module frame), or `null` for an interior wall.
 - **opening**: attached to its wall. `offset` runs from the wall's `start` along
   the wall axis to the opening's near edge; `sill` from the wall's foot.
@@ -172,7 +177,9 @@ to the Revit repository. Any incompatible change bumps the version suffix.
 
 ## Module frame
 
-Computed from the module's bottom floor, which `module_inventory` already finds:
+Computed from the module's bottom floor: the `F` subgroup whose group is
+`Plancher bas` (or Complexe `PB-…`), else the lowest slab as `module_inventory`
+finds it today:
 
 1. **Orientation** from the floor panel's local axes: **X** along its longer
    side, projected onto the horizontal plane; **Z** vertical; **Y** completes a
@@ -192,17 +199,69 @@ Computed from the module's bottom floor, which `module_inventory` already finds:
 Expressing elements in this frame also removes the current limitation of
 `module_inventory`, whose axis-aligned boxes overstate rotated modules.
 
+## Vestack modelling conventions (observed in the spike)
+
+Observed on `250513_AUX_STR_EXE_IndB.3d` (50 940 elements), Cadwork 2026. The
+prefix meanings were inferred from groups, element names and the "Complexe"
+attribute, as asked by the user; `W` and `F` were stated by the user.
+
+**Module id.** `M` followed by 1 to 4 digits, case-insensitive, then end of
+text or a separator (`-`, `_`, space). Leading zeros are dropped when
+normalising, so `M001` and `M1` are the same module. Observed: `M1`, `M17`,
+`M001`, `M007`, `M0`, `M15_W1`. Labels such as "Module standard R+1" or
+"Module Façade Nord", also found in the Module attribute, are not ids: a digit
+must follow the `M`. This rule replaces `MODULE_ID_PATTERN` (`M\d{3}`), under
+which `get_module_inventory` finds **no module at all** in this model.
+
+**Where the id is read, in order:** the subgroup prefix, then the Module user
+attribute, then the group, then the element name. When subgroup and attribute
+disagree (243 elements in the spike model), the subgroup wins and the module
+carries a warning with the number of disagreeing elements.
+
+**Part subgroups** are `<module id><separator><prefix><number?>`:
+
+| Prefix | Object | Evidence |
+|---|---|---|
+| `W` | wall | group `MOB`, Complexe `OB-AUX-0x`; stated by the user |
+| `F` | floor slab | groups `Plancher bas` / `Plancher haut`, Complexe `PB-…` / `PH-…`; stated by the user. Bottom or top is read from the group or Complexe, not the number |
+| `TF` | cold roof (toiture froide) | group `Toiture froide`, trusses and purlins |
+| `C` | cold-roof box (caisson) | group `Toiture froide`, elements named "Caisson toiture froide" |
+| `T` | roof of a crowning module | group `Module de couronnement`, Complexe `CH-AUX-01` |
+| `A` | parapet (acrotère) | group `Module de couronnement`, Complexe `AC-AUX-01`, elements named "Acrotères" |
+| `Poteaux`, `Porteuses`, `fourrure` | posts, bearers, furring | named subgroups, no number; reported as `other` |
+
+Prefixes live in `conventions.py`; an unknown prefix yields `other` and a
+warning, never a dropped element.
+
+**Wall body element.** Each wall subgroup holds exactly one element named after
+the wall type, `MOB<section>` (wood-frame wall, stud section in mm: `MOB95`,
+`MOB145`, `MOB200`), in 133 of 135 walls (one has none, one has two). Its
+bounding box equals the union of the wall's elements in 4 walls out of 6
+sampled; in the other 2 one element sticks out by 146 mm.
+
+**Joinery.** Openings are explicit elements named `MEX type A`, `MEX type B`,
+`MEX type D`, `MEX couloir`: a plain 8-vertex box. Most of them (535 of the
+`MEX` group) have **no subgroup**; only 33 sit in a wall subgroup, and the one in
+`M1-W5` is in group `MOB`, not `MEX`. They are therefore recognised by **name**,
+and attached to walls by **geometry**. `MEX` accessories (Joue, Bavette,
+Larmier, Habillage sous face) are not openings.
+
+**Outside the part convention:** 16 931 elements have no subgroup; processings
+(`Usinage …`, 14 477 elements in group `Usinage`), networks (`ELEC`, `MEP`) and
+connectors have descriptive subgroups; some subgroups lack the module
+(`W1`: 479, `F1`: 661) or the part (`M17`: 695).
+
 ## Grouping elements into objects
 
-A chain of strategies, configured in `conventions.py`, tried in order per module.
-The strategy actually used is reported in `grouping_source`.
+A chain of strategies tried in order per module. The strategy actually used is
+reported in `grouping_source` (`subgroup` or `geometry`).
 
-1. **Field key**: elements of a module sharing the same value of a configured
-   field (group, subgroup or a user attribute) form one object. Its type follows
-   from the group's envelope in the module frame: thin and vertical is a wall,
-   thin and horizontal a slab, anything else `other`. **Which field is the
-   default is decided by the spike.** An empty or missing key falls through.
-2. **Geometric fallback**:
+1. **Subgroup** (default): elements whose subgroup parses as a part subgroup
+   form one object per subgroup, typed from its prefix. A subgroup without a
+   module takes it from the Module attribute, or is reported unattached. A
+   subgroup reduced to the module id (`M17`) goes through the fallback.
+   Processing-only elements (group `Usinage`) are excluded from envelopes.
+2. **Geometric fallback**, for modules or elements the subgroup does not cover:
    - exterior walls: elements lying within `SIDE_BAND_MM` (400 mm) of a floor
      edge form the wall of that side;
    - slabs: horizontal bands at the bottom and at the top of the module
@@ -210,14 +269,25 @@ The strategy actually used is reported in `grouping_source`.
    - interior walls: remaining vertical elements, clustered by shared plane and
      contiguity;
    - the rest becomes `other`.
-3. **Openings**: version 1 detects explicit elements only (joinery elements
-   lying inside a wall). If none is found on a wall, the wall carries the
-   warning `openings not detected` rather than an empty list that would read as
-   a solid wall. **Whether openings must also be read from processings or from
-   gaps between studs is decided by the spike.**
 
-A long side split into several panels yields one wall by geometric fallback and
-possibly several by field key. Such cutting differences are left to Claude's
+**Wall envelope.** When a wall has one `MOB<section>` element, the wall's
+`start`, `end`, `thickness` and `height` come from that element, and the wall
+reports `wall_type` (`MOB200`) and `stud_section` (200). The union of all the
+wall's elements is computed too; if it exceeds the body by more than a
+tolerance in `conventions.py`, the wall carries a warning naming the
+protruding elements. Without exactly one body element, the union is used and
+the wall is warned.
+
+**Openings.** A joinery element (name matching the `MEX` patterns in
+`conventions.py`) is attached to the wall whose body box contains its centre,
+in the module frame, whatever its subgroup. Its box gives `offset`, `sill`,
+`width` and `height`. A joinery element contained in no wall is reported as
+`other` with a warning. A wall with no attached joinery simply has an empty
+`openings` list: the spike showed openings are always modelled as joinery
+elements, so the `openings not detected` warning is dropped.
+
+A long side split into several panels yields one wall per subgroup, and one per
+side by geometric fallback. Such cutting differences are left to Claude's
 comparison rather than normalised here.
 
 ## Drilling down to raw geometry
@@ -255,6 +325,10 @@ then module detail, then element detail, then raw tools.
   fails the inventory: it carries its `warnings` and the rest is exported.
 - Elements without readable geometry go to `skipped_element_ids`.
 - `output_path` that cannot be written returns an error and no partial file.
+- **The bridge does not answer while a Cadwork command is active** (observed in
+  the spike: even `ping` timed out until the modeller pressed Escape). A timeout
+  is reported as "Cadwork may be in an active command: press Escape", not as a
+  dead bridge.
 
 ## Compatibility
 
@@ -262,10 +336,18 @@ then module detail, then element detail, then raw tools.
   v30) and must run on **Python 3.14** (Cadwork 2026, used in production).
 - The `cwapi3d` pin stays on v30: PyPI has no 33.x stubs. Every Cadwork API
   function called by the new code is checked against the current cwapi3d
-  documentation before use, and against the live 2026 model during the spike.
-- **Unverified**: the bridge has probably never run under Cadwork 2026. The
-  only compiled file in the 2026 profile is `MCPBridge.cpython-312.pyc`, likely
-  produced by the repository's 3.12 virtualenv rather than by Cadwork.
+  documentation before use, then against a live 2026 model.
+- **Verified in the spike**: the plugin loads and the bridge runs under
+  Cadwork 2026 (Python 3.14). Read calls used by the inventory work:
+  `get_all_element_ids`, `get_active_element_ids`, `get_standard_attributes`,
+  `get_user_attributes`, `list_defined_user_attributes`, `get_element_info`,
+  `get_element_vertices`, `get_3d_file_path`.
+- **Broken under 2026**, found in the spike: `get_project_data` (the 2026
+  function takes a `str` argument the handler does not pass),
+  `get_version_info` (`utility_controller.get_cadwork_version_info` is gone),
+  `get_element_type` (`element_controller.get_element_type` is gone). The
+  inventory must not depend on them; `element_detail`'s `type` field needs the
+  2026 replacement, looked up in the cwapi3d documentation, not guessed.
 
 ## Testing
 
@@ -273,9 +355,14 @@ All runnable outside Cadwork, in the existing `unittest` suite:
 
 - `object_inventory` on fabricated snapshots: aligned module; module rotated by
   90° and by 37°; the 180° tie-break, including the exact-90° case; L-shaped
-  floor (warning, no objects); field-key grouping; side-band fallback; interior
-  wall; opening attached to its wall with correct `offset` and `sill`; open side;
-  `openings not detected` warning.
+  floor (warning, no objects); subgroup grouping for every prefix in the table;
+  unknown prefix; subgroup without module; subgroup reduced to the module;
+  side-band fallback; interior wall; wall body from its `MOB` element, union
+  overshoot warning, zero or two body elements; joinery without subgroup
+  attached to its wall by geometry, with correct `offset` and `sill`; joinery in
+  no wall; open side.
+- Module ids: `M1`, `M17`, `M001` = `M1`, `M15_W1`, `M139`; "Module standard
+  R+1" rejected; subgroup and attribute disagreeing.
 - Element detail: on a rotated module, element envelopes and vertices in the
   module frame match the model coordinates transformed with the `frame` block;
   an object's envelope equals the union of its elements' envelopes.
@@ -286,24 +373,27 @@ All runnable outside Cadwork, in the existing `unittest` suite:
   existing Vestack adapter tests do: vertices and local axes reach the snapshots.
 - Discovery: `get_object_inventory` appears in
   `CommandDispatcher().diagnostics()`.
-- Existing `get_module_inventory` tests still pass unchanged.
+- Existing `get_module_inventory` tests still pass; new cases cover the relaxed
+  module id rule, which `get_module_inventory` adopts too.
 
-## Spike (first task of the plan)
+## Spike results (15/10/2026)
 
-Read-only, on a **copy** of a representative Vestack model, in **Cadwork 2026**,
-through this MCP server registered in Claude Code. Select one complete wall,
-then two neighbouring walls; read `get_element_info`, `get_user_attributes`,
-`list_defined_user_attributes` and `get_module_inventory` on each selection. No
-write tool is called. It settles:
+Read-only, on a copy of `250513_AUX_STR_EXE_IndB.3d` in Cadwork 2026, through a
+throwaway client speaking the bridge protocol (the MCP tools were not loaded in
+that session). No write operation was sent.
 
-1. the default grouping key (a field constant within a wall and different
-   between two walls), or the absence of one;
-2. how openings exist in the model;
-3. how long reading a building takes;
-4. whether the bridge runs under Python 3.14.
-
-Work that does not depend on these answers (module frame, geometric fallback,
-schema, controller, file export) can proceed before the spike.
+1. **Grouping key: the subgroup.** The wall the modeller selected (39 elements)
+   is exactly subgroup `M1-W5` (39 elements). Conventions: see "Vestack
+   modelling conventions".
+2. **Openings: explicit joinery elements**, mostly outside wall subgroups; see
+   above.
+3. **Timing**: element ids 0,1 s; name/group/subgroup/comment for all 50 940
+   elements 44 s; four user attributes 3,7 s; vertices 14 ms per element
+   (measured on 39), i.e. about 17 s for a module of 1 200 elements and about
+   12 min for the whole model (extrapolated). Hence per-module detail, with
+   attributes read model-wide and vertices only where needed.
+4. **Python 3.14**: the bridge runs; three handlers are broken by API changes
+   (see Compatibility).
 
 ## Documentation to update
 
