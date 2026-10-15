@@ -30,8 +30,9 @@ class ModuleIds(unittest.TestCase):
     def test_the_id_is_found_inside_a_longer_value(self) -> None:
         self.assertEqual(parse_module_id("Module M139"), "M139")
 
-    def test_lower_case_is_accepted(self) -> None:
-        self.assertEqual(parse_module_id("m12"), "M12")
+    def test_lower_case_units_are_not_module_ids(self) -> None:
+        for value in ("m12", "10 m2", "Isolation 12 m3"):
+            self.assertIsNone(parse_module_id(value), value)
 
     def test_labels_without_a_digit_after_the_m_are_rejected(self) -> None:
         for label in ("Module standard R+1", "Module Façade Nord", "MOB200",
@@ -62,6 +63,9 @@ class PartSubgroups(unittest.TestCase):
 
     def test_underscore_separator_and_zero_padded_module(self) -> None:
         self.assertEqual(parse_part("M015_W1"), PartRef("M15", "W", "1", "wall"))
+
+    def test_a_lower_case_module_prefix_is_not_a_part(self) -> None:
+        self.assertIsNone(parse_part("m1-W5"))
 
     def test_a_bare_part_has_no_module(self) -> None:
         self.assertEqual(parse_part("W1"), PartRef(None, "W", "1", "wall"))

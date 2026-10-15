@@ -171,6 +171,10 @@ class SeveralModules(unittest.TestCase):
         inventory = build_inventory(snaps)
         self.assertEqual([m["module_id"] for m in inventory["modules"]], ["M1", "M2"])
 
+    def test_modules_are_sorted_numerically(self) -> None:
+        snaps = closed_module("M10", first_id=1) + closed_module("M2", first_id=100)
+        self.assertEqual([m["module_id"] for m in build_inventory(snaps)["modules"]], ["M2", "M10"])
+
     def test_module_count_and_total_footprint_are_reported(self) -> None:
         snaps = closed_module("M001", first_id=1) + closed_module("M002", first_id=100)
         inventory = build_inventory(snaps)

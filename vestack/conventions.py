@@ -13,8 +13,9 @@ from typing import Dict, Pattern, Tuple
 # separator ("-", "_", space). Observed: M1, M17, M001, M15_W1, M139. Leading
 # zeros are dropped when normalising, so M001 and M1 are the same module. A digit
 # must follow the M, which keeps labels such as "Module standard R+1" out.
+# Upper-case M only: lower-case units such as "10 m2" in element names must not read as module ids.
 MODULE_ID_PATTERN: Pattern[str] = re.compile(
-    r"(?<![A-Za-z0-9])M(\d{1,4})(?=$|[-_ ])", re.IGNORECASE)
+    r"(?<![A-Za-z0-9])M(\d{1,4})(?=$|[-_ ])")
 
 # Cadwork user attributes carrying the module context. Matched against the
 # attribute *name* (case- and accent-insensitive, substring match) rather than
@@ -79,7 +80,7 @@ PART_TYPES: Dict[str, str] = {
 
 # "<module id><separator><letters><number?>", e.g. M1-W5, M16-TF0, M8-Poteaux.
 PART_SUBGROUP_PATTERN: Pattern[str] = re.compile(
-    r"^\s*M(\d{1,4})[-_ ]([A-Za-z]+)(\d*)\s*$", re.IGNORECASE)
+    r"^\s*M(\d{1,4})[-_ ]([A-Za-z]+)(\d*)\s*$")
 
 # A part subgroup missing its module, e.g. "W1". Known prefixes only, so that
 # descriptive subgroups such as "Pliages" are not mistaken for parts.

@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from . import conventions as cv
-from .naming import parse_module_id
+from .naming import module_number, parse_module_id
 
 # (x_min, y_min, z_min, x_max, y_max, z_max), in millimetres.
 BBox = Tuple[float, float, float, float, float, float]
@@ -249,7 +249,7 @@ def build_inventory(snapshots: Sequence[ElementSnapshot],
         else:
             grouped.setdefault(module_id, []).append(snapshot)
 
-    modules = [_build_module(mid, grouped[mid]) for mid in sorted(grouped)]
+    modules = [_build_module(mid, grouped[mid]) for mid in sorted(grouped, key=module_number)]
 
     return {
         "status": "ok",
