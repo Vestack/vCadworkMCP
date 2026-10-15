@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **vCadworkMCP** (repository `Vestack/vCadworkMCP`, formerly `cadworkMCP`): Vestack's MCP (Model Context Protocol) server that lets an AI assistant drive **Cadwork 3D** (timber-construction CAD). The `v` prefix marks it as a Vestack tool, like vMES; it is not a Cadwork product. Keep "Cadwork" for what refers to Cadwork itself (`import cadwork`, `cwapi3d`, `get_cadwork_axis_info`, "for Cadwork 3D"), and the product name for this project. It is **two processes**, not one:
 
-1. **MCP server** (`main.py`) — runs outside Cadwork, launched by the MCP client (Claude Desktop) over stdio. Exposes 167 `@mcp.tool` definitions.
+1. **MCP server** (`main.py`) — runs outside Cadwork, launched by the MCP client (Claude Desktop) over stdio. Exposes 168 `@mcp.tool` definitions.
 2. **Bridge** (`cadwork_bridge.py` + `bridge/`) — runs *inside* Cadwork's embedded Python interpreter, started from the Cadwork plugin GUI. Owns a TCP socket server and is the only code allowed to touch the real cadwork API.
 
 They talk **unframed JSON over a raw TCP socket on `127.0.0.1:53002`**. There is no HTTP and no length header: the receiver keeps reading bytes until `json.loads` succeeds (`core/connection.py:_receive_response`, `cadwork_bridge.py:socket_server`).
@@ -36,8 +36,8 @@ what exposes it. Handler modules are imported one by one and a module that fails
 to import is recorded in `unavailable_modules` without taking the others down —
 `export_handlers` and `import_handlers` do `import cadwork` at module level, so
 they need either Cadwork or the `cwapi3d` stubs. `CommandDispatcher().diagnostics()`
-reports what was found: **140 operations, no unavailable modules**, with the stubs
-installed; 121 without them.
+reports what was found: **141 operations, no unavailable modules**, with the stubs
+installed; 123 without them.
 
 ## Critical: the `*_controller` name collision
 
@@ -62,7 +62,7 @@ socket and returned un-awaited coroutines. Two rules keep it fixed:
   resolved per call, no fallback. Add an entry there when a handler needs a new
   API function.
 
-**Where the 167 tools go.** 137 reach a bridge operation. 4 are computed in the
+**Where the 168 tools go.** 138 reach a bridge operation. 4 are computed in the
 MCP server and work without Cadwork: `measure_distance`, `measure_angle`,
 `measure_area` (`controllers/measurement_controller.py`) and
 `get_cadwork_axis_info` (`main.py`). The remaining **26 are phantoms**: no handler
@@ -77,7 +77,7 @@ exists, so they answer `Unknown operation` with the list of valid ones:
 `export_element_list`, `export_cutting_list`, `export_workshop_drawings`.
 They were deliberately left declared as roadmap markers. Implementing one means
 writing its `handle_*`; the dispatcher then picks it up with no further wiring.
-Conversely, 3 of the 140 operations have no tool (`ping`, `get_model_name`,
+Conversely, 3 of the 141 operations have no tool (`ping`, `get_model_name`,
 `get_version_info`), and 3 controller methods have neither a tool nor a handler
 (`get_export_formats`, `set_material_density`, `set_material_thermal_properties`).
 
@@ -85,7 +85,7 @@ A tool without a handler is not necessarily a phantom: check whether its
 controller method calls `send_command` before listing it as one.
 
 **How far verification actually goes.** The server starts, reaches its lifespan
-handler and sends its `ping` to the bridge. Discovery finds all 140 operations,
+handler and sends its `ping` to the bridge. Discovery finds all 141 operations,
 and mypy checks every handler call site against the Cadwork 30 stubs. The stubs
 type-check but do nothing, so passing mypy says the call is well-formed, not that
 Cadwork accepts it. Only these have run against a live model (Cadwork 2026,
@@ -93,9 +93,8 @@ Cadwork accepts it. Only these have run against a live model (Cadwork 2026,
 `get_active_element_ids`, `get_standard_attributes`, `get_user_attributes`,
 `list_defined_user_attributes`, `get_element_info`, `get_element_vertices`.
 Every other handler, and every write, is still unverified. That model names
-modules `M1`…`M24`, which `vestack/conventions.py:MODULE_ID_PATTERN` (`M\d{3}`)
-does not match, so `get_module_inventory` finds no module in it; the fix is
-specified in `docs/superpowers/specs/2026-10-15-object-inventory-design.md`.
+modules `M1`…`M24`; `MODULE_ID_PATTERN` accepts `M` + 1 to 4 digits since the
+object inventory work.
 
 **Other loose ends.** `bridge/handlers/base_handler.py:BaseHandler.safe_call` is
 dead code, called from nowhere. `create_auto_container_from_standard` and
@@ -124,7 +123,7 @@ describes the abandoned "no handlers layer" refactor — read it as history.
 - `mcp` must stay below 2.0: the 2.x line removed `mcp.server.fastmcp`, which
   `main.py` and `core/server.py` import.
 - The bridge is started by hand in Cadwork: **Fenêtre → Plugins utilisateur** (French UI) shows the user-plugin panel; click **Controle du Pont MCP** (named MCP Bridge Control in an English profile), then **Start Bridge** in the window it opens. There is no "Start Bridge" menu entry, and Cadwork's own **Bridge BETA** is unrelated. After editing bridge-side files, Stop/Start is not sufficient for already-imported modules — restart Cadwork.
-- **The bridge does not answer while a Cadwork command is active**: even `ping` times out until the modeller presses Escape. The plugin window may be open or closed, it makes no difference.
+- **The bridge does not answer while a Cadwork command is active**: even `ping` times out until the modeller presses Escape. The plugin window may be open or closed, it makes no difference. `send_command` takes a per-call `timeout` in seconds (default 30 s, `core/connection.py:SOCKET_TIMEOUT`); a timeout answers with a message telling the user to press Escape in Cadwork (`controllers/base_controller.py`).
 - **Production runs on Cadwork 2026.** First live calls (15/10/2026, read-only) work, but three handlers are broken by 2026 API changes: `get_project_data` (the 2026 function takes a `str` argument), `get_version_info` (`utility_controller.get_cadwork_version_info` is gone) and `get_element_type` (`element_controller.get_element_type` is gone).
 - `stop_bridge()` in the plugin only flips a boolean; it neither closes the socket nor stops the daemon thread.
 
@@ -138,7 +137,7 @@ packages there.
 python -m venv .venv
 .venv\Scripts\python -m pip install -r requirements.txt
 
-.venv\Scripts\python -m unittest discover -s tests -t .   # 78 tests, no Cadwork needed
+.venv\Scripts\python -m unittest discover -s tests -t .   # 199 tests, no Cadwork needed
 .venv\Scripts\python -m unittest tests.test_module_inventory        # one module
 .venv\Scripts\python -m unittest tests.test_dispatcher.Discovery.test_the_real_handler_modules_expose_ping
 .venv\Scripts\python -m mypy .         # baseline: 13 errors in 4 files (all pre-existing)
@@ -206,7 +205,11 @@ generic code references it exactly twice: `EXTENSION_MODULES` in
 `bridge/dispatcher.py`, and the `get_module_inventory` tool plus its controller
 import in `main.py`. `vestack/README.md` documents the modular conventions (module
 id `M139` in a user attribute named "Module", dimensions derived from the bottom
-floor, open-side detection) and how to remove the package. Keep new domain logic
+floor, open-side detection) and how to remove the package.
+The object inventory (`get_object_inventory`, schema in
+`vestack/OBJECT_INVENTORY.md`) is the Cadwork half of the Revit consistency
+check; `docs/superpowers/specs/2026-10-15-object-inventory-design.md` records
+the Vestack modelling conventions it relies on. Keep new domain logic
 there rather than in `bridge/handlers/`, and keep `vestack/module_inventory.py`
 free of Cadwork imports so it stays unit-testable.
 

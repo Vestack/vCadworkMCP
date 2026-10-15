@@ -45,11 +45,21 @@ time.
    - `warnings` — a floor rotated in plan or not rectangular means the reported
      dimensions are overstated. Pass the warning on; never quietly drop it.
    - `skipped_element_ids` — no readable geometry, excluded from every count.
-3. **Counts and statistics:** `get_element_count_by_type`, `get_group_statistics`,
+3. **Objects, to compare with Revit:** `get_object_inventory` without
+   `module_ids` first: one summary per module (frame, counts, warnings), about a
+   minute on a large building. Then `module_ids=["M1"]` for the walls, slabs and
+   openings of the modules worth checking. Drill down only as far as needed:
+   `element_detail="envelope"` (each element in the module frame), then the raw
+   tools (`get_element_info`, `get_element_vertices`) on an object's
+   `element_ids`, then ask the modeller to select them in Cadwork. Report the
+   module warnings and any `unattached_element_ids`; never drop them.
+   `output_path` writes the full inventory as JSON on the machine running the MCP
+   server, and the call can take minutes on a large building.
+4. **Counts and statistics:** `get_element_count_by_type`, `get_group_statistics`,
    `get_material_statistics`, `get_elements_by_type`. The type filter accepts
    beam, panel, drilling, node, line, surface, volume, container, auxiliary,
    text_object, dimension, architectural — **there is no window type**.
-4. **One element in detail:** `get_element_info` returns name, group, subgroup,
+5. **One element in detail:** `get_element_info` returns name, group, subgroup,
    comment, material, the points p1/p2/p3 and the local axes in a single call.
 
 ## Lane 2 — change the model

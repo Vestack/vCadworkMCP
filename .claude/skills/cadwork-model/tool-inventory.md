@@ -2,7 +2,7 @@
 
 Generated from the code: an operation works end to end only when `main.py`
 declares the tool **and** a `handle_<operation>` exists. Counts below:
-**167 tools declared**, **140 handlers**: 137 tools reach a handler, 4 are
+**168 tools declared**, **141 handlers**: 138 tools reach a handler, 4 are
 computed in the MCP server without Cadwork, **26 are not implemented**.
 
 Legend: (w) changes the model — Lane 2 rules apply. (f) writes a file to disk.
@@ -183,6 +183,7 @@ Everything unmarked is read-only.
 ## Vestack (domain extension)
 
 - `get_module_inventory`
+- `get_object_inventory` (f, with `output_path`)
 
 ## Computed in the MCP server
 

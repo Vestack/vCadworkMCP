@@ -157,7 +157,9 @@ One schema for the response and the file. Lengths in millimetres, rounded to
 `objects` is present only for detailed modules. Field meanings:
 
 - `id` is the part subgroup (`M1-W5`) when the object was grouped by subgroup,
-  and a generated `<module>-<type letter><n>` under the geometric fallback.
+  and a generated `<module>-geo<n>` under the geometric fallback
+  (`M1-geo1`); a stray joinery element reported as `other` is
+  `<module>-joinery<element id>`.
 - **wall**: `start`/`end` are the wall axis at its foot, at mid-thickness, as a
   Revit wall's location line. `wall_type` and `stud_section` come from the
   wall's `MOB<section>` body element, `null` without one. `side` is the footprint edge it stands on
@@ -194,7 +196,7 @@ finds it today:
 2. **Origin** at the floor corner such that every floor vertex has x ≥ 0 and
    y ≥ 0; z at the underside of the floor.
 3. **180° tie-break**: two frames satisfy rules 1 and 2. Keep the one whose X
-   axis makes less than 90° with the model's +X; when both make exactly 90°, keep
+   axis makes less than 90° with the model's +X; when both make 90° (within 1e-5 rad), keep
    the one whose X axis is +Y. The Revit side applies the same rule in its own model axes. If the
    building is rotated differently in Revit, a whole module shows up mirrored;
    `x_axis_model` lets Claude recognise that as one flip, not as dozens of
@@ -212,12 +214,13 @@ Observed on `250513_AUX_STR_EXE_IndB.3d` (50 940 elements), Cadwork 2026. The
 prefix meanings were inferred from groups, element names and the "Complexe"
 attribute, as asked by the user; `W` and `F` were stated by the user.
 
-**Module id.** `M` followed by 1 to 4 digits, case-insensitive, then end of
+**Module id.** Upper-case `M` followed by 1 to 4 digits, then end of
 text or a separator (`-`, `_`, space). Leading zeros are dropped when
 normalising, so `M001` and `M1` are the same module. Observed: `M1`, `M17`,
 `M001`, `M007`, `M0`, `M15_W1`. Labels such as "Module standard R+1" or
 "Module Façade Nord", also found in the Module attribute, are not ids: a digit
-must follow the `M`. This rule replaces `MODULE_ID_PATTERN` (`M\d{3}`), under
+must follow the `M`. Lower-case `m` does not match, so "10 m2" in an element
+name does not read as a module. This rule replaces `MODULE_ID_PATTERN` (`M\d{3}`), under
 which `get_module_inventory` finds **no module at all** in this model.
 
 **Where the id is read, in order:** the subgroup prefix, then the Module user

@@ -9,8 +9,10 @@ A module is a rectangular box: a **bottom floor**, usually a **top floor**, and 
 to **eight walls** (long sides get split into several panels). Some modules are
 left **open** on one or more sides so that adjoining modules form a larger room.
 
-Each module carries a unique id of the form `M139` — the letter `M` and three
-digits. In the Cadwork template it lives in a **user attribute named "Module"**,
+Each module carries an id of the form `M1`, `M17` or `M139`: the upper-case
+letter `M` and 1 to 4 digits. Leading zeros are dropped, so `M001` is `M1`. A
+lower-case `m` does not match, so "10 m2" in an element name is not a module. In
+the Cadwork template the id lives in a **user attribute named "Module"**,
 alongside `Bâtiment` and `Niveau`:
 
 | Attribute | Name | Example |
@@ -51,6 +53,31 @@ themselves. Thresholds live in `conventions.py`.
 
 `module_inventory.py` is pure, which is why `tests/test_module_inventory.py` runs
 without Cadwork. Retune behaviour in `conventions.py` before touching the logic.
+
+## Object inventory
+
+`get_object_inventory` goes one level below the module: walls, slabs, roofs,
+parapets and openings, each with its envelope in a frame local to the module
+(origin at a bottom-floor corner, X along its longer side). It is the Cadwork
+half of the Revit consistency check; the schema is in `OBJECT_INVENTORY.md`.
+
+Objects come from **part subgroups** `M<n>-<prefix><k>` (`M1-W5` = module 1,
+wall 5; prefixes in `conventions.PART_TYPES`). A wall's envelope comes from its
+`MOB<section>` body element. Openings are `MEX` joinery elements, attached to
+the wall containing them whatever their subgroup. Elements outside any part
+subgroup are grouped by geometry (side bands, slab bands, interior planes).
+
+Without `module_ids`, the response holds one summary per module: the frame
+without its height, and counts of subgroup objects only. Naming modules in
+`module_ids` adds their objects, and the geometric fallback runs at that level
+of detail. `OBJECT_INVENTORY.md` has the full contract.
+
+| File | Role | Imports Cadwork |
+|---|---|---|
+| `naming.py` | module ids, part subgroups, wall bodies, joinery | no |
+| `frame.py` | module frame from the bottom floor | no |
+| `object_inventory.py` | the logic: modules, objects, openings, fallback | no |
+| `OBJECT_INVENTORY.md` | the output schema, for the Revit side | - |
 
 ## Known limitations
 
