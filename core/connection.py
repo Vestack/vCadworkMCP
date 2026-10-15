@@ -72,25 +72,22 @@ class CadworkConnection:
                     pass
     
     def _receive_response(self, sock: socket.socket) -> bytes:
-        """Receive complete JSON response from socket"""
+        """Receive the whole response: the bridge closes the connection after it.
+
+        Reads until EOF and leaves parsing to the caller, once. Parsing after
+        every chunk instead made a 4 MB response take 30 s. The socket timeout
+        still applies to each recv.
+        """
         chunks = []
         while True:
-            chunk = sock.recv(8192)
+            chunk = sock.recv(65536)
             if not chunk:
                 break
             chunks.append(chunk)
-            
-            # Try to parse complete JSON
-            try:
-                data = b''.join(chunks)
-                json.loads(data.decode('utf-8'))
-                return data
-            except json.JSONDecodeError:
-                continue
-        
+
         if not chunks:
             raise ConnectionAbortedError("No data received from Cadwork")
-        
+
         return b''.join(chunks)
     
     def test_connection(self) -> bool:
