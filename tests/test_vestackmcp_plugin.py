@@ -12,14 +12,13 @@ import tempfile
 import types
 import unittest
 from pathlib import Path
-from types import ModuleType
 from typing import Any, Dict, List
 from unittest.mock import patch
 
 PLUGIN_PATH = Path(__file__).resolve().parent.parent / "API.x64" / "vestackMCP" / "vestackMCP.py"
 
 
-def load_plugin() -> tuple[ModuleType, List[str]]:
+def load_plugin() -> tuple[Any, List[str]]:
     """Load the plugin file under a private name; return it and its console log."""
     console: List[str] = []
     fake_uc = types.ModuleType("utility_controller")
