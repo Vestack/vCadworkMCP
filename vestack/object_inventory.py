@@ -542,9 +542,15 @@ def _attach_openings(joinery: Sequence[ObjectSnapshot],
                      walls: Dict[str, List[_Wall]],
                      frames: Dict[str, ModuleFrame]
                      ) -> Tuple[Dict[str, List[Tuple[ObjectSnapshot, LocalBox]]], List[ObjectSnapshot]]:
-    """Joinery attached to the wall containing its centre; the rest unattached."""
+    """Joinery attached to the wall containing its centre; the rest unattached.
+
+    Adjacent modules share wall planes, so a joinery centre often fits a wall
+    of each: the walls of the joinery's own module (element_module) are tried
+    first, then the other modules' in numeric order.
+    """
     attached: Dict[str, List[Tuple[ObjectSnapshot, LocalBox]]] = {}
     orphans: List[ObjectSnapshot] = []
+    by_number = sorted(walls, key=module_number)
     for j in joinery:
         if not j.vertices:
             orphans.append(j)
@@ -552,7 +558,9 @@ def _attach_openings(joinery: Sequence[ObjectSnapshot],
         x0, y0, z0, x1, y1, z1 = _model_bbox(j.vertices)
         centre = ((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2)
         host: Optional[Tuple[_Wall, ModuleFrame]] = None
-        for module_id in sorted(walls, key=module_number):
+        home, _part, _disagree = element_module(j)
+        order = ([home] if home in walls else []) + [m for m in by_number if m != home]
+        for module_id in order:
             frame = frames[module_id]
             local = frame.to_local(centre)
             for wall in walls[module_id]:

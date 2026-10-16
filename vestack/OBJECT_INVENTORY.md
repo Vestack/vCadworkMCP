@@ -191,6 +191,13 @@ the wall body count warning, unless exactly one of its elements is named
 
 **opening** (inside a wall's `openings`)
 
+A joinery element (name `MEX type ...` or `MEX couloir`) belongs to the wall whose
+body contains its box centre, within `JOINERY_CENTRE_TOLERANCE_MM` (50 mm).
+Adjacent modules share wall planes, so a centre can fit a wall of each: the walls
+of the joinery's own module (subgroup, then `Module` attribute, then group) are
+tried first, then those of the other modules in numeric order. Subgroup walls of
+every module are tried before the fallback walls of detailed modules.
+
 A window or door is drawn as several joinery elements of one name (frame, sash,
 glazing, about twelve for a `MEX type B`). On one wall, joinery elements with the
 same name (surrounding spaces stripped) whose boxes touch or overlap, within

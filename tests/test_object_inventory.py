@@ -235,6 +235,23 @@ class Openings(unittest.TestCase):
                  for opening in o.get("openings", []) if 50 in opening["element_ids"]]
         self.assertEqual(hosts, ["M1-W1"])
 
+    def test_joinery_on_a_shared_plane_goes_to_its_own_module_first(self) -> None:
+        # M2 stands against M1's +x side: M1-W2 (x 5855..6000) and M2-W1
+        # (x 6000..6145) touch, and a joinery centred on x = 6000 fits both.
+        neighbour = [element(101, box(6000, 0, 0, 12000, 2500, 220), group="Plancher bas",
+                             subgroup="M2-F1"),
+                     element(110, box(6000, 212, 220, 6145, 2288, 2865), name="MOB145",
+                             subgroup="M2-W1")]
+        joinery = element(56, box(5950, 800, 310, 6050, 1800, 2625), name="MEX type B",
+                          module="M2")
+        inventory = build_object_inventory(module_m1() + neighbour + [joinery], detail_all=True)
+        hosts = [o["id"] for m in inventory["modules"] for o in m["objects"]
+                 for opening in o.get("openings", []) if 56 in opening["element_ids"]]
+        self.assertEqual(hosts, ["M2-W1"])
+        counts = {m["module_id"]: m["counts"]["opening"]
+                  for m in build_object_inventory(module_m1() + neighbour + [joinery])["modules"]}
+        self.assertEqual(counts, {"M1": 1, "M2": 1})
+
     def test_joinery_in_no_wall_is_an_other_object_with_a_warning(self) -> None:
         stray = element(51, box(2000, 1000, 500, 2500, 1100, 1500), name="MEX type A",
                         module="M1")
