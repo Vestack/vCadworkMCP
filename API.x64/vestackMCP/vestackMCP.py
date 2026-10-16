@@ -3,13 +3,17 @@ vestackMCP plugin (vCadworkMCP bridge launcher)
 
 This file lives in the Cadwork user profile, away from the repository, so it has
 to be told where the repository is. See resolve_mcp_home() for how it decides.
+
+Launching the plugin (a click in Cadwork, or `ci_start.exe ... /PLUGIN=vestackMCP`)
+starts the bridge with no window when nothing listens on port 53002, and opens
+the status window when a bridge already listens. See launch().
 """
 
 import os
 import sys
 import tkinter as tk
 from tkinter import messagebox, ttk
-from typing import Optional
+from typing import Callable, Optional
 
 # Cadwork imports
 import utility_controller as uc
@@ -217,17 +221,42 @@ class BridgeGUI:
     def show(self) -> None:
         """Show the GUI"""
         self.create_gui()
+        self.update_status()
         if self.root is not None:
             self.root.mainloop()
+
+def launch(listening: Callable[[], bool],
+           start: Callable[[], bool],
+           show_window: Callable[[], None]) -> str:
+    """Decide what a click on the plugin (or the /PLUGIN= shortcut) does.
+
+    Cadwork may run this script afresh on every click, so module globals say
+    nothing about an earlier click: only the port does.
+
+    Returns "started" or "failed" when nothing listened and the bridge was
+    started with no window, and "window" when a bridge already listens and the
+    status window was opened instead.
+    """
+    if listening():
+        show_window()
+        return "window"
+    return "started" if start() else "failed"
+
+def show_status_window() -> None:
+    """Open the Start/Stop window for a bridge that already listens."""
+    global bridge_running
+
+    # The port answered, whatever this process remembers.
+    bridge_running = True
+    gui = BridgeGUI()
+    gui.show()
 
 def main() -> None:
     """Main plugin entry point"""
     try:
-        uc.print_to_console("Starting vestackMCP plugin...")
-        gui = BridgeGUI()
-        gui.show()
+        launch(lambda: is_listening(attempts=1), start_bridge, show_status_window)
     except Exception as e:
-        uc.print_to_console(f"Plugin error: {e}")
+        uc.print_to_console(f"vestackMCP: plugin error: {e}")
         messagebox.showerror("Error", str(e))
 
 if __name__ == "__main__":
