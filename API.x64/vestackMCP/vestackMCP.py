@@ -230,8 +230,8 @@ def launch(listening: Callable[[], bool],
            show_window: Callable[[], None]) -> str:
     """Decide what a click on the plugin (or the /PLUGIN= shortcut) does.
 
-    Cadwork may run this script afresh on every click, so module globals say
-    nothing about an earlier click: only the port does.
+    Module globals may not survive from an earlier click (not checked), so the
+    decision reads the port, which always tells the truth.
 
     Returns "started" or "failed" when nothing listened and the bridge was
     started with no window, and "window" when a bridge already listens and the

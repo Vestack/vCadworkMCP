@@ -6,7 +6,9 @@ code: it imports `cadwork_bridge` from your checkout of this repository.
 
 ## Install with install.ps1
 
-From any PowerShell (5 or later), pointing at your checkout:
+Close Cadwork first: a locked plugin file makes the copy fail midway (running the
+script again once Cadwork is closed fixes it). From any PowerShell (5 or later),
+pointing at your checkout:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File <checkout>\API.x64\vestackMCP\install.ps1
@@ -58,8 +60,8 @@ The same logic applies to the shortcut and to a manual click (`vestackMCP.py:lau
 - A bridge already listens: the plugin opens a small status window with Start and Stop
   buttons and the resolved checkout path.
 
-The decision reads the port, not a flag in the script, because Cadwork may run the
-script afresh on every click.
+The decision reads the port, not a flag in the script, so it holds whether or not
+Cadwork keeps the script's globals between clicks.
 
 Stop only clears the window's status flag. The socket stays bound until Cadwork exits,
 so restart Cadwork to release the port or to reload changed bridge code.
@@ -75,8 +77,10 @@ The desktop shortcut **Cadwork 2026 + vestackMCP** runs:
 Cadwork's command line runs the plugin right after the file opens (documented at
 <https://docs.cadwork.com/projects/cwapi3dpython/en/latest/command_line/>); `/PLUGIN=`
 takes the plugin's folder name. The documented form passes a `.3d` file as first
-argument: what the shortcut does without one has not yet been verified. To always
-open a given model, add its path in quotes at the start of the shortcut's arguments.
+argument, and the docs quote only `/RUNPROGRAM="..."`. Two points of the shortcut
+differ from the docs and have not yet been verified: what it does without a `.3d` file,
+and whether the quoted `/EXE="..."` form is accepted. To always open a given model,
+add its path in quotes at the start of the shortcut's arguments.
 
 Without the shortcut, start Cadwork normally and click **vestackMCP** once in
 **Fenêtre → Plugins utilisateur** (French UI).

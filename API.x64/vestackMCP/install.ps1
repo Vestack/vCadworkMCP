@@ -48,7 +48,7 @@ $SourceDir = $PSScriptRoot
 $RepoRoot  = Split-Path (Split-Path $SourceDir -Parent) -Parent
 
 function Stop-Install([string]$Message) {
-    Write-Error "vestackMCP install: $Message"
+    [Console]::Error.WriteLine("vestackMCP install: $Message")
     exit 1
 }
 
@@ -89,6 +89,10 @@ Write-Host "Wrote $pointer -> $RepoRoot"
 # Old plugin folder.
 if ($RemoveOld) {
     if (Test-Path -LiteralPath $OldDir) {
+        # Remove-Item -Recurse on a junction or symlink could reach the link's target.
+        if ((Get-Item -LiteralPath $OldDir -Force).Attributes -band [IO.FileAttributes]::ReparsePoint) {
+            Stop-Install "$OldDir is a link (junction or symlink), remove it by hand"
+        }
         Write-Host "Removing old plugin folder $OldDir"
         Remove-Item -LiteralPath $OldDir -Recurse -Force
     } else {

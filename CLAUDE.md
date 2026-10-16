@@ -116,8 +116,10 @@ describes the abandoned "no handlers layer" refactor — read it as history.
 - Python: the MCP server runs on the venv's 3.12 (`mypy.ini`; the README's "3.8+"
   is stale), but **bridge-side code runs on Cadwork's embedded interpreter**:
   3.10 for v30 (`EXE_30/Pclib.x64/python310`), 3.14 for 2026. Keep `bridge/`,
-  `vestack/` and `cadwork_bridge.py` valid Python 3.10: no `typing.Self`,
-  `except*`, `tomllib`. Cadwork provides the real
+  `vestack/`, `cadwork_bridge.py` and `API.x64/vestackMCP/vestackMCP.py` valid Python 3.10:
+  no `typing.Self`, `except*`, `tomllib`. mypy does not check the plugin: the
+  `[mypy-API.*]` section of `mypy.ini` does not match the `API.x64` directory. Check it with
+  `ast.parse(..., feature_version=(3, 10))`. Cadwork provides the real
   `element_controller`, `geometry_controller`, `attribute_controller` and `cadwork`
   modules; the `cwapi3d` package provides stubs of the same names, so those imports
   also resolve outside Cadwork. The stubs type-check but do nothing, so an import
@@ -128,18 +130,24 @@ describes the abandoned "no handlers layer" refactor — read it as history.
   (copies it into the profile's `3d\API.x64\vestackMCP`, writes `mcp_home.txt`,
   creates the desktop shortcut "Cadwork 2026 + vestackMCP"; `-RemoveOld` deletes the
   former `MCPBridge` folder). Two ways to launch it:
-  - the shortcut runs `ci_start.exe "<file.3d>" /PLUGIN=vestackMCP /EXE=<exe dir>`, which
-    runs the plugin right after the file opens (mechanism documented at
-    <https://docs.cadwork.com/projects/cwapi3dpython/en/latest/command_line/>);
+  - the shortcut. The form documented at
+    <https://docs.cadwork.com/projects/cwapi3dpython/en/latest/command_line/> is
+    `ci_start.exe "<file.3d>" /PLUGIN=<plugin folder name> /EXE=<exe dir>`, which runs the
+    plugin right after the file opens. `install.ps1` derives its shortcut from it: target
+    `ci_start.exe`, arguments `/EXE="C:\Program Files\cadwork.dir\EXE_2026" /PLUGIN=vestackMCP`
+    (`EXE_30` for profile 30), no file, `/EXE` first. Two points differ from the docs and
+    have not yet been verified: the shortcut without a .3d file, and the quoted
+    `/EXE="..."` form (the docs quote only `/RUNPROGRAM="..."`);
   - in Cadwork, **Fenêtre → Plugins utilisateur** (French UI), click **vestackMCP**.
   The first launch starts the bridge with no window and prints
   `vestackMCP: bridge listening on 53002, from <checkout>` in the Cadwork console. A launch
   while the bridge already listens opens the status window (Start/Stop). The choice reads
-  the port (`vestackMCP.py:launch`), not a module global, because Cadwork may run the script
-  afresh on each click. A plugin's script must have the same name as its folder, and
-  `/PLUGIN=` takes that folder name: do not rename one without the other. Cadwork has no
-  "run at startup" setting, so the shortcut is the only automatic route. Using the shortcut
-  without a .3d file has not yet been verified. Cadwork's own **Bridge BETA** is unrelated.
+  the port (`vestackMCP.py:launch`), not a module global: that holds whether or not Cadwork
+  keeps the script's globals between clicks, which has not been checked. A plugin's script
+  must have the same name as its folder, and `/PLUGIN=` takes that folder name: do not
+  rename one without the other. The Cadwork Python docs document no "run at startup"
+  setting, only the command line, so the shortcut is the automatic route we rely on
+  (assumption: no other exists). Cadwork's own **Bridge BETA** is unrelated.
   After editing bridge-side files, Stop/Start is not sufficient for already-imported
   modules — restart Cadwork.
 - **Local exposure.** Once started, the bridge accepts connections on `127.0.0.1:53002`
