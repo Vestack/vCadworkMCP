@@ -532,20 +532,55 @@ def _attach_openings(joinery: Sequence[ObjectSnapshot],
     return attached, orphans
 
 
+def _boxes_touch(a: LocalBox, b: LocalBox, tolerance: float) -> bool:
+    return all(_gap(a.lo[i], a.hi[i], b.lo[i], b.hi[i]) <= tolerance for i in range(3))
+
+
+def _opening_groups(items: Sequence[Tuple[ObjectSnapshot, LocalBox]]
+                    ) -> List[Tuple[str, LocalBox, List[int]]]:
+    """(name, box, sorted element ids) per opening of one wall.
+
+    A window is drawn as a dozen joinery pieces of one name (frame, sash,
+    glazing...). Pieces with the same stripped name whose boxes touch or
+    overlap, within JOINERY_CENTRE_TOLERANCE_MM on every axis, make one
+    opening, transitively (union-find); its box is the union of theirs.
+    """
+    parent = list(range(len(items)))
+
+    def find(i: int) -> int:
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    names = [j.name.strip() for j, _box in items]
+    for i in range(len(items)):
+        for k in range(i + 1, len(items)):
+            if names[i] == names[k] and _boxes_touch(items[i][1], items[k][1],
+                                                     cv.JOINERY_CENTRE_TOLERANCE_MM):
+                parent[find(i)] = find(k)
+    groups: Dict[int, List[int]] = {}
+    for i in range(len(items)):
+        groups.setdefault(find(i), []).append(i)
+    return [(names[members[0]], union([items[i][1] for i in members]),
+             sorted(items[i][0].element_id for i in members))
+            for members in groups.values()]
+
+
 def _opening_records(wall: _Wall, items: Sequence[Tuple[ObjectSnapshot, LocalBox]]
                      ) -> List[Dict[str, Any]]:
     axis = 0 if wall.along_x else 1
     rows: List[Dict[str, Any]] = []
-    for j, box in items:
+    for name, box, element_ids in _opening_groups(items):
         rows.append({
-            "name": j.name.strip(),
+            "name": name,
             "offset": _mm(box.lo[axis] - wall.start[axis]),
             "sill": _mm(box.lo[2] - wall.start[2]),
             "width": _mm(box.size[axis]),
             "height": _mm(box.size[2]),
-            "element_ids": [j.element_id],
+            "element_ids": element_ids,
         })
-    rows.sort(key=lambda r: r["offset"])
+    rows.sort(key=lambda r: (r["offset"], r["element_ids"][0]))
     for n, row in enumerate(rows, start=1):
         row["id"] = f"{wall.object_id}-O{n}"
     return [{"id": r.pop("id"), **r} for r in rows]
@@ -724,7 +759,7 @@ def _module_objects(module: _Module, frame: Optional[ModuleFrame], walls: Sequen
     "other". Objects with no readable geometry are omitted with a module warning.
     """
     counts: Counter = Counter(ref.object_type for ref in module.part_refs.values())
-    counts["opening"] = sum(len(attached.get(w.object_id, [])) for w in walls)
+    counts["opening"] = sum(len(_opening_groups(attached.get(w.object_id, []))) for w in walls)
     counts.setdefault("other", 0)
     objects: List[Dict[str, Any]] = []
     if frame is None or not detailed:
@@ -771,7 +806,7 @@ def _module_objects(module: _Module, frame: Optional[ModuleFrame], walls: Sequen
                 made = group.wall.record
                 made["openings"] = _opening_records(group.wall, items)
                 made["warnings"].append(f"grouped by geometry ({group.label})")
-                counts["opening"] += len(items)
+                counts["opening"] += len(made["openings"])
         elif group.kind == "slab":
             made = _make_box_object(group.object_id, "slab", group.elements, frame, None,
                                     group.label)

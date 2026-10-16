@@ -166,14 +166,22 @@ the wall body count warning, unless exactly one of its elements is named
 
 **opening** (inside a wall's `openings`)
 
+A window or door is drawn as several joinery elements of one name (frame, sash,
+glazing, about twelve for a `MEX type B`). On one wall, joinery elements with the
+same name (surrounding spaces stripped) whose boxes touch or overlap, within
+`JOINERY_CENTRE_TOLERANCE_MM` (50 mm) on every axis, make one opening. The relation
+is closed transitively. Two windows of the same name further apart than 50 mm stay
+two openings; overlapping elements of different names stay apart. `counts.opening`
+counts openings, not joinery elements.
+
 | Key | Meaning |
 |---|---|
-| `id` | `<wall id>-O<n>`, numbered by increasing `offset` |
-| `name` | joinery name, e.g. `"MEX type B"` |
+| `id` | `<wall id>-O<n>`, numbered by increasing `offset`, then by smallest element id |
+| `name` | joinery name with surrounding spaces stripped, e.g. `"MEX type B"` |
 | `offset` | from the wall's `start`, along the wall, to the opening's near edge |
 | `sill` | from the wall's foot to the bottom of the opening |
-| `width`, `height` | of the joinery box; `width` runs along the wall |
-| `element_ids` | the joinery element id, as a list |
+| `width`, `height` | of the union of the opening's joinery boxes; `width` runs along the wall |
+| `element_ids` | every joinery element of the opening, sorted |
 
 **slab**: `level` (`"bottom"` or `"top"` from the group or Complexe code, `PB-` /
 `PH-`; otherwise `"bottom"` for the bottom floor, else `null`; a fallback slab

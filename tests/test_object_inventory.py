@@ -288,6 +288,42 @@ class Openings(unittest.TestCase):
         self.assertEqual(detailed["unattached_element_ids"], [])
 
 
+class OpeningGroups(unittest.TestCase):
+    """A window drawn as several joinery pieces of one name is one opening."""
+
+    def window_pieces(self) -> List[ObjectSnapshot]:
+        # Around joinery 50 of M1-W1 (x 1000..2455, z 310..2625): a head on top
+        # of it, a jamb against its left side, and a jamb 25 mm off its right
+        # side, within the 50 mm tolerance. The two jambs only meet through 50.
+        return [element(51, box(1000, 0, 2625, 2455, 212, 2700), name="MEX type B ",
+                        group="MEX"),
+                element(52, box(950, 0, 310, 1000, 212, 2700), name="MEX type B",
+                        group="MEX"),
+                element(54, box(2480, 0, 310, 2500, 212, 2625), name="MEX type B",
+                        group="MEX")]
+
+    def test_touching_pieces_of_one_name_make_one_opening(self) -> None:
+        openings = objects_by_id(detail(module_m1() + self.window_pieces()))["M1-W1"]["openings"]
+        self.assertEqual(openings, [{"id": "M1-W1-O1", "name": "MEX type B", "offset": 950,
+                                     "sill": 90, "width": 1550, "height": 2390,
+                                     "element_ids": [50, 51, 52, 54]}])
+
+    def test_two_separate_windows_of_one_name_stay_two(self) -> None:
+        second = element(53, box(3500, 0, 310, 4000, 212, 2625), name="MEX type B", group="MEX")
+        snaps = module_m1() + self.window_pieces() + [second]
+        openings = objects_by_id(detail(snaps))["M1-W1"]["openings"]
+        self.assertEqual([(o["id"], o["offset"], o["element_ids"]) for o in openings],
+                         [("M1-W1-O1", 950, [50, 51, 52, 54]), ("M1-W1-O2", 3500, [53])])
+        self.assertEqual(module_entry(build_object_inventory(snaps))["counts"]["opening"], 2)
+        self.assertEqual(module_entry(detail(snaps))["counts"]["opening"], 2)
+
+    def test_overlapping_pieces_of_different_names_stay_apart(self) -> None:
+        other = element(55, box(1500, 0, 310, 2000, 212, 2625), name="MEX type A", group="MEX")
+        openings = objects_by_id(detail(module_m1() + [other]))["M1-W1"]["openings"]
+        self.assertEqual([(o["name"], o["element_ids"]) for o in openings],
+                         [("MEX type B", [50]), ("MEX type A", [55])])
+
+
 class ModuleAssignment(unittest.TestCase):
     def test_a_disagreeing_module_attribute_is_warned_and_the_subgroup_wins(self) -> None:
         snaps = module_m1()
