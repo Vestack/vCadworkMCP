@@ -324,6 +324,87 @@ class OpeningGroups(unittest.TestCase):
                          [("MEX type B", [50]), ("MEX type A", [55])])
 
 
+class ModuleEnvelope(unittest.TestCase):
+    """Elements of a module lying outside its floor footprint (+150 mm) are left out."""
+
+    def all_element_ids(self, entry: Dict[str, Any]) -> Set[int]:
+        return {i for o in entry["objects"] for i in o["element_ids"]}
+
+    def test_a_loose_element_40_m_away_is_outside_and_in_no_object(self) -> None:
+        far = element(70, box(-40000, 1000, 220, -39900, 1100, 9865), name="tasseau",
+                      module="M1")
+        entry = module_entry(detail(module_m1() + [far]))
+        self.assertNotIn(70, self.all_element_ids(entry))
+        self.assertEqual((entry["outside_element_count"], entry["outside_element_ids"],
+                          entry["outside_element_ids_truncated"]), (1, [70], False))
+        self.assertIn("1 elements attributed to M1 lie outside its envelope and were left out",
+                      entry["warnings"])
+        # It reaches 9865 mm: the module height ignores it.
+        self.assertEqual(entry["frame"]["height"], 3400)
+        self.assertEqual(entry["grouping_source"], "subgroup+geometry")
+
+    def test_a_foreign_element_in_a_wall_subgroup_is_left_out_of_the_wall(self) -> None:
+        foreign = element(13, box(30000, 6, 220, 30045, 206, 2865), name="tasseau",
+                          group="MOB", subgroup="M1-W1", module="M4")
+        entry = module_entry(detail(module_m1() + [foreign]))
+        wall = objects_by_id(detail(module_m1() + [foreign]))["M1-W1"]
+        self.assertEqual(wall["element_ids"], [10, 11, 12])
+        self.assertEqual(wall["warnings"], [])
+        self.assertEqual(entry["outside_element_ids"], [13])
+
+    def test_a_part_with_every_element_outside_is_omitted_and_says_why(self) -> None:
+        stray = element(14, box(30000, 6, 220, 30045, 206, 2865), name="MOB200",
+                        subgroup="M1-W9")
+        entry = module_entry(detail(module_m1() + [stray]))
+        self.assertNotIn("M1-W9", [o["id"] for o in entry["objects"]])
+        self.assertIn("M1-W9: every element lies outside the module envelope, omitted",
+                      entry["warnings"])
+
+    def test_the_tolerance_is_150_mm_around_the_footprint(self) -> None:
+        # Centres at x = -140 (kept) and x = -160 (left out), then y = 2640 and
+        # 2660 beyond the 2500 mm width.
+        snaps = module_m1() + [
+            element(71, box(-160, 1000, 300, -120, 1040, 400), name="cale", module="M1"),
+            element(72, box(-180, 1000, 300, -140, 1040, 400), name="cale", module="M1"),
+            element(73, box(3000, 2620, 300, 3040, 2660, 400), name="cale", module="M1"),
+            element(74, box(3000, 2640, 300, 3040, 2680, 400), name="cale", module="M1")]
+        entry = module_entry(detail(snaps))
+        self.assertEqual(entry["outside_element_ids"], [72, 74])
+        self.assertTrue({71, 73} <= self.all_element_ids(entry))
+
+    def test_the_outside_ids_are_capped_at_200(self) -> None:
+        far = [element(1000 + n, box(-40000, 1000, 220, -39900, 1100, 2865), module="M1")
+               for n in reversed(range(205))]
+        entry = module_entry(detail(module_m1() + far))
+        self.assertEqual(entry["outside_element_count"], 205)
+        self.assertEqual(entry["outside_element_ids"], list(range(1000, 1200)))
+        self.assertTrue(entry["outside_element_ids_truncated"])
+
+    def test_the_summary_tests_only_the_elements_whose_vertices_were_read(self) -> None:
+        snaps = module_m1() + [element(70, box(-40000, 1000, 220, -39900, 1100, 2865),
+                                       module="M1")]
+        real = keep_vertices(snaps, geometry_needed(snaps))
+        entry = module_entry(build_object_inventory(real))
+        self.assertEqual((entry["outside_element_count"], entry["outside_element_ids"]), (0, []))
+        self.assertEqual(entry["unclassified_element_count"], 1)
+        full = module_entry(build_object_inventory(snaps))
+        self.assertEqual(full["outside_element_ids"], [70])
+        self.assertEqual(full["unclassified_element_count"], 0)
+
+    def test_a_module_without_frame_has_no_outside_keys(self) -> None:
+        snaps = [s for s in module_m1() if s.subgroup not in ("M1-F1", "M1-TF0")]
+        self.assertNotIn("outside_element_count", module_entry(detail(snaps)))
+        self.assertEqual(module_entry(detail(module_m1()))["outside_element_count"], 0)
+
+    def test_a_side_band_is_bounded_on_both_sides(self) -> None:
+        # Its centre (x = -100) is inside the envelope and its far edge within
+        # the -x band, but it starts 500 mm out: not the -x wall.
+        long = element(75, box(-500, 1000, 220, 300, 1100, 2865), name="cloison", module="M1")
+        entry = module_entry(detail(module_m1() + [long]))
+        host = next(o for o in entry["objects"] if 75 in o["element_ids"])
+        self.assertIn("grouped by geometry (interior)", host["warnings"])
+
+
 class ModuleAssignment(unittest.TestCase):
     def test_a_disagreeing_module_attribute_is_warned_and_the_subgroup_wins(self) -> None:
         snaps = module_m1()

@@ -42,6 +42,9 @@
     "opening": 1
    },
    "warnings": [],
+   "outside_element_count": 0,
+   "outside_element_ids": [],
+   "outside_element_ids_truncated": false,
    "objects": [
     {
      "id": "M1-F1",

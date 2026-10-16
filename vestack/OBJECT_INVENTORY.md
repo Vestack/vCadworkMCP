@@ -90,13 +90,36 @@ every id.
 | Key | Meaning |
 |---|---|
 | `module_id` | canonical id: `M` + number without leading zeros (`M001` → `M1`). Only an upper-case `M` is read: `m1` is not a module id. An element's module is read from its subgroup, then its `Module` attribute, then its group; never from its name, where `Tige filetée M12` is a thread size. |
-| `grouping_source` | `"subgroup"`, `"geometry"`, `"subgroup+geometry"`, or `null` |
-| `frame` | `origin_model`, `x_axis_model`, `y_axis_model`, `z_axis_model`, `length` (along X), `width` (along Y), `height` (top of the module's elements above the origin). `null` when there is no bottom floor, or it fills less than 80% of its enclosing rectangle. `height` is `null` in summarised modules: only detailed modules compute it. |
-| `counts` | objects per type: `wall`, `slab`, `roof`, `parapet`, `other`, `opening`. `opening` and `other` are always present, other types only when they occur. Subgroup parts count even when their geometry was not readable. In a summarised module, `counts` cover subgroup parts and the openings of subgroup walls only: a module with `grouping_source` `"geometry"` shows zero counts in a summary and its real counts in the detail. |
-| `warnings` | module-level problems, never dropped silently. Includes `unknown part prefixes reported as other: <prefixes>`; `<n> elements have a Module attribute that disagrees with their subgroup; the subgroup was used`; `no bottom floor found: no frame, no objects`; `bottom floor fills <n>% of its enclosing rectangle: not rectangular, objects omitted`; and, in detailed modules, `<id>: no readable geometry, omitted` for each object dropped. |
+| `grouping_source` | `"subgroup"`, `"geometry"`, `"subgroup+geometry"`, or `null`; read on every element attributed to the module, those outside its envelope included, so that a summary and a detail report the same value |
+| `frame` | `origin_model`, `x_axis_model`, `y_axis_model`, `z_axis_model`, `length` (along X), `width` (along Y), `height` (top of the module's elements above the origin, elements outside the envelope left out). `null` when there is no bottom floor, or it fills less than 80% of its enclosing rectangle. `height` is `null` in summarised modules: only detailed modules compute it. |
+| `counts` | objects per type: `wall`, `slab`, `roof`, `parapet`, `other`, `opening`. `opening` and `other` are always present, other types only when they occur. Subgroup parts count even when their geometry was not readable or every element lies outside the envelope. In a summarised module, `counts` cover subgroup parts and the openings of subgroup walls only: a module with `grouping_source` `"geometry"` shows zero counts in a summary and its real counts in the detail. |
+| `warnings` | module-level problems, never dropped silently. Includes `unknown part prefixes reported as other: <prefixes>`; `<n> elements have a Module attribute that disagrees with their subgroup; the subgroup was used`; `no bottom floor found: no frame, no objects`; `bottom floor fills <n>% of its enclosing rectangle: not rectangular, objects omitted`; `<n> elements attributed to <module> lie outside its envelope and were left out`; and, in detailed modules, `<id>: no readable geometry, omitted` or `<id>: every element lies outside the module envelope, omitted` for each object dropped. |
+| `outside_element_count` | present when the module has a frame: number of its elements found outside its envelope (see "Module envelope") |
+| `outside_element_ids` | present when the module has a frame: those elements, sorted, the first 200 only, in a summary, a detail and the export file alike |
+| `outside_element_ids_truncated` | present when the module has a frame: `true` when `outside_element_ids` lists fewer ids than `outside_element_count` |
 | `objects` | detailed modules only; empty when the module has no usable frame |
-| `unclassified_element_count` | summarised modules only: elements left to the geometric fallback |
+| `unclassified_element_count` | summarised modules only: elements left to the geometric fallback, those found outside the envelope excluded |
 | `unplaced_joinery_ids` | summarised modules only: joinery of this module, with readable geometry, not attached to a subgroup wall. The detail places it in a fallback wall or reports it as `other`. |
+
+## Module envelope
+
+A module's envelope is its bottom floor's footprint in plan, `[0, length] x [0,
+width]` in the module frame, enlarged by `MODULE_ENVELOPE_TOLERANCE_MM` (150 mm) on
+every side, at any height. It is the perimeter rule of the module-derivation spec.
+An element attributed to the module, in a part subgroup or loose, whose box
+centre lies outside the envelope is left out of the module: of its objects, its
+geometric fallback, its walls (and so the openings they take) and its
+`frame.height`. It is listed in `outside_element_ids` and counted in
+`outside_element_count`, with the module warning above. Typical cases: a batten of
+another module filed in this module's wall subgroup, or a loose element whose
+`Module` attribute names this module but which lies elsewhere in the building.
+
+Only an element whose vertices were read can be tested; the others stay in the
+module as before. A detailed module reads every element, so its outside list is
+complete. A summary reads only bottom floors, wall bodies and joinery (plus every
+element of a module with no usable floor part), so its outside list covers those
+elements only, and an element found outside in the detail can still count in the
+summary's `unclassified_element_count`.
 
 ## Objects
 
@@ -124,11 +147,13 @@ the elements were scanned).
 
 Elements of a module outside any part subgroup are grouped by geometry, in detailed
 modules only; a summary counts them as `unclassified_element_count`. Elements
-without readable vertices take no part. Each element goes to the first rule that
+without readable vertices, and those outside the module envelope, take no part.
+Each element goes to the first rule that
 fits:
 
 1. Element of the bottom floor: the bottom slab.
-2. Box entirely within `SIDE_BAND_MM` (400 mm) of a floor edge (tested in the order
+2. Box entirely within `SIDE_BAND_MM` (400 mm) of a floor edge, on either side of
+   it (for `-x`: `x >= -400` and `x <= 400` over the whole box; tested in the order
    `-x`, `+x`, `-y`, `+y`): the wall of that side, plates included.
 3. Slab-shaped (thinnest along Z, thickness at most half the middle dimension) and
    with a plan width, the smaller of its X and Y sizes, above

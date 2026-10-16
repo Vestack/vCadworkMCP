@@ -33,6 +33,9 @@ SIDES: Tuple[str, ...] = ("-x", "+x", "-y", "+y")
 # Unattached ids listed in a summary, smallest first; unattached_element_count
 # gives the total.
 UNATTACHED_IDS_IN_SUMMARY = 200
+# Ids of elements outside a module's envelope listed on its entry, smallest
+# first; outside_element_count gives the total.
+OUTSIDE_IDS_LISTED = 200
 
 
 @dataclass
@@ -248,6 +251,37 @@ def _frame_dict(frame: ModuleFrame, height: Optional[float]) -> Dict[str, Any]:
     }
 
 
+def _is_outside(e: ObjectSnapshot, frame: ModuleFrame) -> bool:
+    """Whether an element's box centre lies outside the module envelope in plan."""
+    tol = cv.MODULE_ENVELOPE_TOLERANCE_MM
+    x, y, _z = frame.box_of(e.vertices).centre
+    return not (-tol <= x <= frame.length + tol and -tol <= y <= frame.width + tol)
+
+
+def _inside_envelope(module: _Module, frame: ModuleFrame) -> Tuple[_Module, List[int]]:
+    """The module without its elements outside the envelope, and their sorted ids.
+
+    Only elements with vertices can be tested: the others stay. A part whose
+    elements all lie outside stays, empty, so that it is still counted.
+    """
+    outside: List[int] = []
+
+    def keep(elements: Sequence[ObjectSnapshot]) -> List[ObjectSnapshot]:
+        kept = []
+        for e in elements:
+            if e.vertices and _is_outside(e, frame):
+                outside.append(e.element_id)
+            else:
+                kept.append(e)
+        return kept
+
+    inner = _Module(module.module_id,
+                    parts={oid: keep(els) for oid, els in module.parts.items()},
+                    part_refs=dict(module.part_refs), loose=keep(module.loose),
+                    disagreements=module.disagreements)
+    return inner, sorted(outside)
+
+
 # --- objects ---------------------------------------------------------------
 
 @dataclass
@@ -366,8 +400,10 @@ def _element_details(elements: Sequence[ObjectSnapshot], frame: ModuleFrame,
 
 def _band_side(box: LocalBox, frame: ModuleFrame) -> Optional[str]:
     band = cv.SIDE_BAND_MM
-    tests = {"-x": box.hi[0] <= band, "+x": box.lo[0] >= frame.length - band,
-             "-y": box.hi[1] <= band, "+y": box.lo[1] >= frame.width - band}
+    tests = {"-x": -band <= box.lo[0] and box.hi[0] <= band,
+             "+x": frame.length - band <= box.lo[0] and box.hi[0] <= frame.length + band,
+             "-y": -band <= box.lo[1] and box.hi[1] <= band,
+             "+y": frame.width - band <= box.lo[1] and box.hi[1] <= frame.width + band}
     return next((side for side in SIDES if tests[side]), None)
 
 
@@ -659,6 +695,18 @@ def build_object_inventory(snapshots: Sequence[ObjectSnapshot],
             frames[module_id] = frame
             floors[module_id] = floor
 
+    # Elements lying outside their module's envelope leave it before any
+    # geometric step. The grouping source is read first, on every element, so
+    # that a summary and a detail report the same one.
+    grouping = {m: _grouping_source(module) for m, module in modules.items()}
+    outside: Dict[str, List[int]] = {}
+    for module_id, frame in frames.items():
+        modules[module_id], outside[module_id] = _inside_envelope(modules[module_id], frame)
+        if outside[module_id]:
+            module_warnings[module_id].append(
+                f"{len(outside[module_id])} elements attributed to {module_id} lie outside "
+                "its envelope and were left out")
+
     detailed = {m for m in modules if detail_all or m in requested}
     walls: Dict[str, List[_Wall]] = {}
     for module_id, frame in frames.items():
@@ -696,7 +744,7 @@ def build_object_inventory(snapshots: Sequence[ObjectSnapshot],
         frame = frames.get(module_id)
         is_detailed = module_id in detailed
         entry: Dict[str, Any] = {"module_id": module_id,
-                                 "grouping_source": _grouping_source(module),
+                                 "grouping_source": grouping[module_id],
                                  "frame": None, "counts": {},
                                  "warnings": module_warnings[module_id]}
         if frame is not None:
@@ -709,6 +757,11 @@ def build_object_inventory(snapshots: Sequence[ObjectSnapshot],
                                           is_detailed, element_detail,
                                           module_warnings[module_id])
         entry["counts"] = counts
+        if frame is not None:
+            out_ids = outside[module_id]
+            entry["outside_element_count"] = len(out_ids)
+            entry["outside_element_ids"] = out_ids[:OUTSIDE_IDS_LISTED]
+            entry["outside_element_ids_truncated"] = len(out_ids) > OUTSIDE_IDS_LISTED
         if is_detailed:
             entry["objects"] = objects
         else:
@@ -769,7 +822,11 @@ def _module_objects(module: _Module, frame: Optional[ModuleFrame], walls: Sequen
     def add(object_id: str, record: Optional[Dict[str, Any]],
             elements: Sequence[ObjectSnapshot]) -> bool:
         if record is None:
-            warnings.append(f"{object_id}: no readable geometry, omitted")
+            # A part is never created empty: an empty one lost every element
+            # to the envelope.
+            reason = ("no readable geometry" if elements
+                      else "every element lies outside the module envelope")
+            warnings.append(f"{object_id}: {reason}, omitted")
             return False
         if element_detail != "none":
             record["elements"] = _element_details(elements, module_frame, element_detail)

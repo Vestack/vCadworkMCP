@@ -105,6 +105,13 @@ JOINERY_NAME_PATTERN: Pattern[str] = re.compile(
 # How far outside a wall body a joinery centre may lie and still belong to it.
 JOINERY_CENTRE_TOLERANCE_MM: float = 50.0
 
+# Module envelope: the bottom floor's footprint in plan, [0, length] x
+# [0, width] in the module frame, enlarged by this on every side. An element
+# attributed to a module whose box centre lies outside it is left out of the
+# module's objects. Same perimeter rule as the module-derivation spec
+# (docs/superpowers/specs/2026-10-15-module-derivation-design.md).
+MODULE_ENVELOPE_TOLERANCE_MM: float = 150.0
+
 # Groups whose elements are processings (drillings, notches): no envelope.
 PROCESSING_GROUPS: Tuple[str, ...] = ("usinage",)
 
