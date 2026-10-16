@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **vCadworkMCP** (repository `Vestack/vCadworkMCP`, formerly `cadworkMCP`): Vestack's MCP (Model Context Protocol) server that lets an AI assistant drive **Cadwork 3D** (timber-construction CAD). The `v` prefix marks it as a Vestack tool, like vMES; it is not a Cadwork product. Keep "Cadwork" for what refers to Cadwork itself (`import cadwork`, `cwapi3d`, `get_cadwork_axis_info`, "for Cadwork 3D"), and the product name for this project. It is **two processes**, not one:
 
 1. **MCP server** (`main.py`) — runs outside Cadwork, launched by the MCP client (Claude Desktop) over stdio. Exposes 168 `@mcp.tool` definitions.
-2. **Bridge** (`cadwork_bridge.py` + `bridge/`) — runs *inside* Cadwork's embedded Python interpreter, started from the Cadwork plugin GUI. Owns a TCP socket server and is the only code allowed to touch the real cadwork API.
+2. **Bridge** (`cadwork_bridge.py` + `bridge/`) — runs *inside* Cadwork's embedded Python interpreter, started by the Cadwork plugin `vestackMCP`. Owns a TCP socket server and is the only code allowed to touch the real cadwork API.
 
 They talk **unframed JSON over a raw TCP socket on `127.0.0.1:53002`**. There is no HTTP and no length header. The MCP-side client reads the response to EOF and parses it once, so it relies on the bridge closing the connection after every response (`core/connection.py:_receive_response`); the bridge reads the request until `json.loads` succeeds (`cadwork_bridge.py:socket_server`).
 
@@ -107,10 +107,10 @@ describes the abandoned "no handlers layer" refactor — read it as history.
 ## Hard environment constraints
 
 - **The checkout can live anywhere.** The plugin resolves it at run time:
-  `CADWORK_MCP_HOME`, else `mcp_home.txt` next to `MCPBridge.py`, else the legacy
+  `CADWORK_MCP_HOME`, else `mcp_home.txt` next to `vestackMCP.py`, else the legacy
   `C:\cadworkMCP` — first candidate containing `cadwork_bridge.py` wins
-  (`API.x64/MCPBridge/MCPBridge.py:resolve_mcp_home`). The GUI shows what it
-  resolved. `start.txt` is gone: the plugin imports `cadwork_bridge` directly
+  (`API.x64/vestackMCP/vestackMCP.py:resolve_mcp_home`). The status window shows
+  what it resolved. `start.txt` is gone: the plugin imports `cadwork_bridge` directly
   instead of `exec()`-ing a text file.
 - Bridge port: the **server** side reads `CW_PORT` (default 53002, `core/server.py`); the **bridge** side hardcodes `53002` (`cadwork_bridge.py`). Changing it means editing both.
 - Python: the MCP server runs on the venv's 3.12 (`mypy.ini`; the README's "3.8+"
@@ -124,7 +124,28 @@ describes the abandoned "no handlers layer" refactor — read it as history.
   succeeding proves nothing about a call working.
 - `mcp` must stay below 2.0: the 2.x line removed `mcp.server.fastmcp`, which
   `main.py` and `core/server.py` import.
-- The bridge is started by hand in Cadwork: **Fenêtre → Plugins utilisateur** (French UI) shows the user-plugin panel; click **Controle du Pont MCP** (named MCP Bridge Control in an English profile), then **Start Bridge** in the window it opens. There is no "Start Bridge" menu entry, and Cadwork's own **Bridge BETA** is unrelated. After editing bridge-side files, Stop/Start is not sufficient for already-imported modules — restart Cadwork.
+- **Starting the bridge.** Install the plugin with `API.x64/vestackMCP/install.ps1`
+  (copies it into the profile's `3d\API.x64\vestackMCP`, writes `mcp_home.txt`,
+  creates the desktop shortcut "Cadwork 2026 + vestackMCP"; `-RemoveOld` deletes the
+  former `MCPBridge` folder). Two ways to launch it:
+  - the shortcut runs `ci_start.exe "<file.3d>" /PLUGIN=vestackMCP /EXE=<exe dir>`, which
+    runs the plugin right after the file opens (mechanism documented at
+    <https://docs.cadwork.com/projects/cwapi3dpython/en/latest/command_line/>);
+  - in Cadwork, **Fenêtre → Plugins utilisateur** (French UI), click **vestackMCP**.
+  The first launch starts the bridge with no window and prints
+  `vestackMCP: bridge listening on 53002, from <checkout>` in the Cadwork console. A launch
+  while the bridge already listens opens the status window (Start/Stop). The choice reads
+  the port (`vestackMCP.py:launch`), not a module global, because Cadwork may run the script
+  afresh on each click. A plugin's script must have the same name as its folder, and
+  `/PLUGIN=` takes that folder name: do not rename one without the other. Cadwork has no
+  "run at startup" setting, so the shortcut is the only automatic route. Using the shortcut
+  without a .3d file has not yet been verified. Cadwork's own **Bridge BETA** is unrelated.
+  After editing bridge-side files, Stop/Start is not sufficient for already-imported
+  modules — restart Cadwork.
+- **Local exposure.** Once started, the bridge accepts connections on `127.0.0.1:53002`
+  with no authentication: any process running on the machine can drive Cadwork, writes
+  included. The port is bound to the loopback interface only, so it is not reachable from
+  the network.
 - **The bridge does not answer while a Cadwork command is active**: even `ping` times out until the modeller presses Escape. The plugin window may be open or closed, it makes no difference. `send_command` takes a per-call `timeout` in seconds (default 30 s, `core/connection.py:SOCKET_TIMEOUT`); a timeout answers with a message telling the user to press Escape in Cadwork (`controllers/base_controller.py`).
 - **Production runs on Cadwork 2026.** First live calls (15/10/2026, read-only) work, but three handlers are broken by 2026 API changes: `get_project_data` (the 2026 function takes a `str` argument), `get_version_info` (`utility_controller.get_cadwork_version_info` is gone) and `get_element_type` (`element_controller.get_element_type` is gone).
 - `stop_bridge()` in the plugin only flips a boolean; it neither closes the socket nor stops the daemon thread.
@@ -242,5 +263,5 @@ The authoritative reference is the cwapi3d Python documentation, <https://docs.c
 - `README_DE.md` — the original German README, kept for reference only.
 - `vestack/README.md` — the Vestack modular conventions and how to remove the extension.
 - `bridge/ARCHITECTURE.md` — the abandoned "no handlers layer" refactor. History.
-- `API.x64/MCPBridge/README.md` — installing the Cadwork plugin into the user profile's `3d\API.x64` directory.
+- `API.x64/vestackMCP/README.md` — installing the Cadwork plugin (`install.ps1`, or a manual copy) into the user profile's `3d\API.x64` directory.
 - `.claude/skills/cadwork-model/SKILL.md` — how to drive a live model through the MCP: preflight, read-only inventory, and the guarded procedure for modifying elements.

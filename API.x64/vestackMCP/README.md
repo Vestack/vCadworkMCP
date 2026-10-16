@@ -1,107 +1,111 @@
-# 📋 Manual installation — vCadworkMCP Bridge plugin
+# vestackMCP plugin for Cadwork
 
-## 🎯 Copy instructions
+Cadwork plugin that starts the vCadworkMCP bridge (a TCP socket server on
+`127.0.0.1:53002`) inside Cadwork's Python interpreter. The plugin holds no bridge
+code: it imports `cadwork_bridge` from your checkout of this repository.
 
-### Step 1: find the Cadwork plugin directory
-1. Open **Cadwork 3D**
-2. Click **Help → Info**
-3. Open the **"Userprofile"** folder
-4. Navigate to **`3d\API.x64`**
+## Install with install.ps1
 
-**Typical path:**
-```
-C:\Users\Public\Documents\cadwork\userprofil_xx\3d\API.x64
-```
+From any PowerShell (5 or later), pointing at your checkout:
 
-### Step 2: copy the plugin
-1. Copy this **entire `MCPBridge` folder**:
-```
-<checkout>\API.x64\MCPBridge\
+```powershell
+powershell -ExecutionPolicy Bypass -File <checkout>\API.x64\vestackMCP\install.ps1
 ```
 
-2. **Paste** it into Cadwork's API.x64 directory:
+The script:
+
+1. copies `vestackMCP.py`, `plugin_info.xml`, `Icon.png`, `icon.svg` and `README.md`
+   into `C:\Users\Public\Documents\cadwork\userprofil_2026\3d\API.x64\vestackMCP`;
+2. writes `mcp_home.txt` there, holding the path of your checkout;
+3. creates the desktop shortcut **Cadwork 2026 + vestackMCP** (see below).
+
+| Option | Effect |
+|---|---|
+| `-Profile 30` | Target the Cadwork 30 profile and `EXE_30` instead of 2026 (default `2026`). |
+| `-RemoveOld` | Delete the former `...\3d\API.x64\MCPBridge` folder of that profile, and say so. |
+| `-NoShortcut` | Install the plugin only. |
+
+It stops with a message, before copying anything, if the profile folder or (without
+`-NoShortcut`) `ci_start.exe` is missing. Restart Cadwork afterwards so that it
+rescans its plugin folder.
+
+## Manual install (fallback)
+
+1. In Cadwork, **Help → Info → Userprofile**, then open `3d\API.x64`. Typical path:
+   `C:\Users\Public\Documents\cadwork\userprofil_xx\3d\API.x64`.
+2. Copy this whole `vestackMCP` folder there. The folder name must stay `vestackMCP`,
+   identical to the script name `vestackMCP.py`: Cadwork requires it.
+3. Tell the plugin where your checkout is, by either setting the `CADWORK_MCP_HOME`
+   environment variable, or creating `mcp_home.txt` next to `vestackMCP.py` with the
+   path on its first line (UTF-8, no BOM):
+
+   ```
+   C:\Users\you\Developpements\cadworkMCP
+   ```
+
+   Without either it falls back to `C:\cadworkMCP`. The first candidate that contains
+   `cadwork_bridge.py` wins.
+4. Restart Cadwork.
+
+## What happens when the plugin runs
+
+The same logic applies to the shortcut and to a manual click (`vestackMCP.py:launch`):
+
+- Nothing listens on port 53002: the bridge starts at once, with no window, and the
+  Cadwork console prints `vestackMCP: bridge listening on 53002, from <checkout>`. If it
+  cannot start, the console says why (checkout not found, import error, port held by
+  another process).
+- A bridge already listens: the plugin opens a small status window with Start and Stop
+  buttons and the resolved checkout path.
+
+The decision reads the port, not a flag in the script, because Cadwork may run the
+script afresh on every click.
+
+Stop only clears the window's status flag. The socket stays bound until Cadwork exits,
+so restart Cadwork to release the port or to reload changed bridge code.
+
+## Starting Cadwork with the bridge running
+
+The desktop shortcut **Cadwork 2026 + vestackMCP** runs:
+
 ```
-[CADWORK_USERPROFILE]\3d\API.x64\MCPBridge\
+"C:\Program Files\cadwork.dir\ci_start.exe" /EXE="C:\Program Files\cadwork.dir\EXE_2026" /PLUGIN=vestackMCP
 ```
 
-### Step 3: check the layout
-After copying, the structure should look like this:
+Cadwork's command line runs the plugin right after the file opens (documented at
+<https://docs.cadwork.com/projects/cwapi3dpython/en/latest/command_line/>); `/PLUGIN=`
+takes the plugin's folder name. The documented form passes a `.3d` file as first
+argument: what the shortcut does without one has not yet been verified. To always
+open a given model, add its path in quotes at the start of the shortcut's arguments.
+
+Without the shortcut, start Cadwork normally and click **vestackMCP** once in
+**Fenêtre → Plugins utilisateur** (French UI).
+
+## Security
+
+Once started, the bridge accepts connections on `127.0.0.1:53002` with no
+authentication. Any process on the machine can drive Cadwork through it, writes
+included. The port is bound to the loopback interface, so it is not reachable from the
+network.
+
+## Connecting the MCP server
+
+Claude Desktop launches the MCP server by itself (see the main
+[`README.md`](../../README.md)). To run it by hand for debugging:
+
 ```
-[CADWORK_USERPROFILE]\3d\API.x64\
-└── MCPBridge\
-    ├── MCPBridge.py          ← the plugin itself (GUI)
-    ├── plugin_info.xml       ← plugin metadata
-    ├── mcp_home.txt          ← optional: path to your checkout (see below)
-    └── README.md             ← this guide
-```
-
-The plugin does not contain the bridge code: it imports `cadwork_bridge` from your
-checkout of this repository. Tell it where that checkout is, by either setting the
-`CADWORK_MCP_HOME` environment variable, or creating `mcp_home.txt` next to
-`MCPBridge.py` with the path on its first line:
-
-```
-C:\Users\you\Developpements\vCadworkMCP
-```
-
-Without either it falls back to `C:\cadworkMCP`. The GUI displays the path it
-resolved, so a wrong setting is visible before you press Start.
-
-## 🚀 Using the plugin
-
-### 1. Restart Cadwork
-- Close **Cadwork 3D** and open it again
-
-### 2. Activate the plugin
-- **Fenêtre → Plugins utilisateur** in the French UI (shows the user-plugin panel)
-- The plugin appears as **Controle du Pont MCP** (MCP Bridge Control in an English profile)
-- **Click** the button to launch the plugin
-
-### 3. Start the bridge
-- The **GUI opens** automatically
-- Click **"Start Bridge"**
-- The status switches to **"Running"**
-
-## 🔗 Connecting the MCP server
-
-Once the plugin has started the bridge, Claude Desktop launches the MCP server on its own (see the main [`README.md`](../../README.md)). To run it by hand for debugging:
-
-```bash
 cd <checkout>
 .venv\Scripts\python main.py
 ```
 
-External tools such as Claude can then drive Cadwork.
+## Troubleshooting
 
-## ⚙️ Plugin features
-
-- ✅ **One-click bridge start**
-- ✅ **Status display**
-- ✅ **GUI control**
-- ✅ **Embedded server** (socket server on port 53002, inside Cadwork's Python interpreter)
-
-## 🛠️ Troubleshooting
-
-### The plugin does not appear
-- **Restart Cadwork**
-- **Check the plugin bar:** Window → Plugins
-- **Check the folder name:** it must be exactly `MCPBridge`
-
-### The bridge does not start
-- Is **port 53002** free? (check for another running bridge)
-- Are the **Python paths** correct? The GUI shows which checkout the plugin resolved (`CADWORK_MCP_HOME`, then `mcp_home.txt`, then `C:\cadworkMCP`)
-- Check the **Cadwork console** for error messages
-
-### The connection fails
-- Check your **firewall settings**
-- Use **localhost / 127.0.0.1** only
-- Note that "Stop Bridge" only clears the status flag; it does not release the socket. Restart Cadwork if the port stays occupied.
-
-## 🎯 That's it
-
-**Three simple steps:**
-1. **Copy the folder**
-2. **Start the plugin**
-3. **Activate the bridge**
-
-Your Cadwork installation is now ready for external tool integration. 🎉
+- **The plugin does not appear**: restart Cadwork, and check that the folder is named
+  exactly `vestackMCP` and contains `vestackMCP.py`.
+- **The bridge does not start**: read the Cadwork console. Check that port 53002 is
+  free and that the checkout path is right (the status window shows the resolved
+  path; with the shortcut, the console line does).
+- **The connection fails**: use `127.0.0.1` only. A bridge that does not answer while a
+  Cadwork command is active answers again once you press Escape.
+- **Upgrading from the MCPBridge plugin**: run `install.ps1 -RemoveOld`, or delete
+  `...\3d\API.x64\MCPBridge` by hand. Two plugins would try to bind the same port.

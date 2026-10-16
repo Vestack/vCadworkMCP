@@ -32,16 +32,26 @@ API — **keep its major version equal to your installed Cadwork version**, or m
 checks the code against the wrong API in both directions.
 
 ### 3. Set up the Cadwork bridge
-Copy `API.x64/MCPBridge/` into your Cadwork user profile's `3d\API.x64` directory,
-then point it at this checkout — either set `CADWORK_MCP_HOME`, or create
-`mcp_home.txt` next to `MCPBridge.py` holding the path. Full guide:
-[`API.x64/MCPBridge/README.md`](API.x64/MCPBridge/README.md).
+Run the installer from this checkout (PowerShell 5 or later):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File API.x64\vestackMCP\install.ps1
+```
+
+It copies the `vestackMCP` plugin into the Cadwork 2026 user profile, records this
+checkout in `mcp_home.txt`, and creates the desktop shortcut **Cadwork 2026 + vestackMCP**.
+Options: `-Profile 30` for Cadwork 30, `-RemoveOld` to delete the former `MCPBridge`
+plugin folder, `-NoShortcut` to skip the shortcut. A manual copy works too. Full guide:
+[`API.x64/vestackMCP/README.md`](API.x64/vestackMCP/README.md).
 
 **Starting the bridge:**
-1. Start Cadwork 3D
-2. Open the user-plugin panel (**Fenêtre → Plugins utilisateur** in the French UI) and click **Controle du Pont MCP** (MCP Bridge Control)
-3. Click **"Start Bridge"** in the window that opens
-4. After changing bridge code: **"Stop Bridge"** → **"Start Bridge"** to restart (restart Cadwork if modules were already imported)
+1. Open Cadwork with the **Cadwork 2026 + vestackMCP** shortcut: the plugin runs after the file opens and starts the bridge with no window. Or start Cadwork normally, open the user-plugin panel (**Fenêtre → Plugins utilisateur** in the French UI) and click **vestackMCP** once.
+2. The Cadwork console prints `vestackMCP: bridge listening on 53002, from <checkout>`.
+3. Clicking **vestackMCP** again opens a status window with Start/Stop.
+4. After changing bridge code, restart Cadwork: the bridge cannot be unloaded from inside it.
+
+Once started, any process on the machine can send commands to Cadwork through
+`127.0.0.1:53002`, writes included. The port is not reachable from the network.
 
 ### 4. Configure Claude Desktop
 
@@ -261,7 +271,7 @@ are the wire contract: the handler reads them with `args.get("...")`.
 ### Debugging
 - Logging is configured in `core/logging.py`
 - The Cadwork connection is managed in `core/connection.py`
-- The bridge prints to the Cadwork console; use the plugin's status display to confirm it is listening on port 53002
+- The bridge prints to the Cadwork console; the console line `vestackMCP: bridge listening on 53002` (or the plugin's status window) confirms it is listening
 
 ### Reference documentation
 The authoritative Cadwork API reference is the cwapi3d Python documentation: <https://docs.cadwork.com/projects/cwapi3dpython/en/latest/> (sources: <https://github.com/cwapi3d/cwapi3dpython>).

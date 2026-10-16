@@ -20,9 +20,9 @@ volumes in m³, and state the unit on every figure.
 Call `get_3d_file_path` once (not `get_project_data`, broken under Cadwork
 2026). It names the open file, which also tells you whether it is a copy.
 
-- **Connection refused**: the bridge is not running. Ask the user to open the
-  user-plugin panel (Fenêtre → Plugins utilisateur), click **Controle du Pont
-  MCP**, then **Start Bridge** (port 53002).
+- **Connection refused**: the bridge is not running. Ask the user to launch
+  Cadwork with the **Cadwork 2026 + vestackMCP** shortcut, or to click
+  **vestackMCP** once in Fenêtre → Plugins utilisateur (port 53002).
 - **Timeout**: the bridge is running but Cadwork is in an active command. Ask
   the user to press **Escape** in Cadwork, then retry once.
 
