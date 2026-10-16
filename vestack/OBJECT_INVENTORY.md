@@ -125,9 +125,14 @@ summary's `unclassified_element_count`.
 
 Every object has `id`, `type`, `element_ids` (sorted) and `warnings`. Object
 `warnings` carry the object's own problems: a wall body count (`<n> wall body
-elements (MOB<section>)...`), elements sticking out of the wall body, `grouped by
+elements (MOB<section>)...`), elements sticking out of the wall body (`elements
+stick out of the wall body by up to <n> mm: [<ids>]`), `grouped by
 geometry (<label>)`, `unknown part prefix '<prefix>': reported as other`, and
 `joinery '<name>' lies in no wall`.
+
+A warning that embeds an id list shows at most the first 10 ids, sorted; a longer
+list ends with `... (<N> in total)`, e.g. `[13, 14, ..., 22] ... (15 in total)`
+with the ten ids written out.
 
 `id` is:
 - `<module id>-<prefix as written><number as written>` for subgroup parts, with the

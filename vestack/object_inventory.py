@@ -36,6 +36,8 @@ UNATTACHED_IDS_IN_SUMMARY = 200
 # Ids of elements outside a module's envelope listed on its entry, smallest
 # first; outside_element_count gives the total.
 OUTSIDE_IDS_LISTED = 200
+# Ids shown in a warning text before "... (<N> in total)".
+WARNING_IDS_SHOWN = 10
 
 
 @dataclass
@@ -69,6 +71,13 @@ def _mm(value: float) -> int:
 
 def _pt(point: Sequence[float]) -> List[int]:
     return [_mm(c) for c in point]
+
+
+def _ids_text(ids: Sequence[int]) -> str:
+    """An id list for a warning: the first WARNING_IDS_SHOWN, then the total."""
+    if len(ids) <= WARNING_IDS_SHOWN:
+        return str(list(ids))
+    return f"{list(ids[:WARNING_IDS_SHOWN])} ... ({len(ids)} in total)"
 
 
 def _model_bbox(vertices: Sequence[Point3]) -> Tuple[float, float, float, float, float, float]:
@@ -338,7 +347,7 @@ def _make_wall(object_id: str, elements: Sequence[ObjectSnapshot], frame: Module
             excess = max(max(body.lo[i] - whole.lo[i], whole.hi[i] - body.hi[i])
                          for i in range(3))
             warnings.append(f"elements stick out of the wall body by up to {_mm(excess)} mm: "
-                            f"{out}")
+                            f"{_ids_text(out)}")
     along_x, start, end, thickness, side = _wall_geometry(body, frame, along)
     record: Dict[str, Any] = {
         "id": object_id,

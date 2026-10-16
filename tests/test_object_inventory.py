@@ -151,6 +151,15 @@ class Walls(unittest.TestCase):
         self.assertTrue(any("146 mm" in w and "[13]" in w for w in wall["warnings"]),
                         wall["warnings"])
 
+    def test_a_long_overshoot_list_shows_the_first_10_ids_and_the_total(self) -> None:
+        snaps = module_m1() + [element(13 + n, box(100 * n, 212, 220, 100 * n + 50, 358, 2865),
+                                       name="Joue", group="MOB", subgroup="M1-W1")
+                               for n in range(15)]
+        wall = objects_by_id(detail(snaps))["M1-W1"]
+        self.assertIn("elements stick out of the wall body by up to 146 mm: "
+                      "[13, 14, 15, 16, 17, 18, 19, 20, 21, 22] ... (15 in total)",
+                      wall["warnings"])
+
     def test_a_wall_without_body_uses_the_union_and_is_warned(self) -> None:
         snaps = [s for s in module_m1() if s.element_id != 10]
         wall = objects_by_id(detail(snaps))["M1-W1"]
