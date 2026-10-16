@@ -91,7 +91,9 @@ type-check but do nothing, so passing mypy says the call is well-formed, not tha
 Cadwork accepts it. Only these have run against a live model (Cadwork 2026,
 15/10/2026, read-only): `ping`, `get_3d_file_path`, `get_all_element_ids`,
 `get_active_element_ids`, `get_standard_attributes`, `get_user_attributes`,
-`list_defined_user_attributes`, `get_element_info`, `get_element_vertices`.
+`list_defined_user_attributes`, `get_element_info`, `get_element_vertices`, and
+`get_object_inventory` (16/10/2026: summary of 25 modules in 3,8 s, export in
+5,2 s; results in the object-inventory spec, "Live runs").
 Every other handler, and every write, is still unverified. That model names
 modules `M1`…`M24`; `MODULE_ID_PATTERN` accepts `M` + 1 to 4 digits since the
 object inventory work.

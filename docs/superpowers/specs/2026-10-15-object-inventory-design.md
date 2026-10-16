@@ -409,6 +409,33 @@ that session). No write operation was sent.
 4. **Python 3.14**: the bridge runs; three handlers are broken by API changes
    (see Compatibility).
 
+## Live runs of get_object_inventory (16/10/2026)
+
+Read-only, same model copy, Cadwork 2026, through the repository's MCP
+controller called in-process (`VestackController.get_object_inventory`, the code
+behind the tool; the MCP stdio layer was not in the loop).
+
+- **Timing**, far below the spike's extrapolation (whole-model reads run inside
+  the bridge in one call): summary of 25 modules (50 940 elements, 5 344 vertex
+  reads) 3,8 s; detail of M1 3,5 s; full export 5,2 s (about 0,9 MB).
+- **First run** found four defects the fixtures could not show, all fixed
+  (commits 6d55e1b, 0a4f275, 58941ee, 875513f): one opening per joinery piece
+  (a window is about 12 elements named alike: 526 "openings"); elements
+  attributed to a module but lying elsewhere in the building feeding fallback
+  walls tens of metres long (27 fallback walls thicker than 600 mm); joinery
+  without module captured by those walls; warnings embedding up to 70 ids.
+- **Second run**, after a Cadwork restart: 44 openings in the model (1 to 3 per
+  module); no fallback wall thicker than 600 mm; 1 912 elements reported outside
+  their module's envelope (115 for M1). M1-W5 matches the spike's raw reads:
+  `MOB200`, thickness 212, length 3 645, height 2 645; its window is one opening
+  of 12 `MEX type B` pieces, sill 90, height 2 315, width 1 529 (union of the
+  pieces; the spike's single piece measured 1 455).
+- **Open data-quality signals**, reported as warnings, not fixed in code: M1-W1
+  holds 6 elements sticking out of its body by up to 12,5 m; M4, M5 and M12
+  carry no joinery; M4's frame (13 095 mm, origin z -758) differs from its
+  neighbours' (12 716 mm, -258) [Spéculation: a foreign element in its floor
+  subgroup].
+
 ## Documentation to update
 
 - `vestack/OBJECT_INVENTORY.md` (new): the schema, for the Revit side.
