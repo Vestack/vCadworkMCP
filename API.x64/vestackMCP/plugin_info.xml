@@ -4,28 +4,28 @@
     <Date>2025-01-15</Date>
     <Author>MCP Development Team</Author>
     <Name>
-        <Text language="German">MCP Bridge Control</Text>
-        <Text language="English">MCP Bridge Control</Text>
-        <Text language="French">Controle du Pont MCP</Text>
-        <Text language="Italian">Controllo Bridge MCP</Text>
-        <Text language="Spanish">Control del Puente MCP</Text>
-        <Text language="Czech">Ovladani MCP Bridge</Text>
-        <Text language="Finnish">MCP-sillan hallinta</Text>
-        <Text language="Russian">Upravlenie MCP Bridge</Text>
-        <Text language="Polish">Kontrola mostka MCP</Text>
-        <Text language="Romanian">Control punte MCP</Text>
-        <Text language="Norwegian">MCP Bridge kontroll</Text>
-        <Text language="Chinese">MCP桥控制</Text>
-        <Text language="Portuguese">Controle da ponte MCP</Text>
-        <Text language="Estonian">MCP silla kontroll</Text>
-        <Text language="Japanese">MCPブリッジ制御</Text>
+        <Text language="German">vestackMCP</Text>
+        <Text language="English">vestackMCP</Text>
+        <Text language="French">vestackMCP</Text>
+        <Text language="Italian">vestackMCP</Text>
+        <Text language="Spanish">vestackMCP</Text>
+        <Text language="Czech">vestackMCP</Text>
+        <Text language="Finnish">vestackMCP</Text>
+        <Text language="Russian">vestackMCP</Text>
+        <Text language="Polish">vestackMCP</Text>
+        <Text language="Romanian">vestackMCP</Text>
+        <Text language="Norwegian">vestackMCP</Text>
+        <Text language="Chinese">vestackMCP</Text>
+        <Text language="Portuguese">vestackMCP</Text>
+        <Text language="Estonian">vestackMCP</Text>
+        <Text language="Japanese">vestackMCP</Text>
     </Name>
     <Description>
         <Text language="German">
             <![CDATA[
-            MCP Bridge Control Plugin
+            vestackMCP plugin
 
-            Dieses Plugin ermöglicht die Steuerung der MCP (Model Context Protocol) Bridge für Cadwork.
+            Dieses Plugin startet die vestackMCP-Bridge (MCP, Model Context Protocol) für Cadwork.
             
             Funktionen:
             • Automatischer Start der Bridge-Verbindung
@@ -39,9 +39,9 @@
         </Text>
         <Text language="English">
             <![CDATA[
-            MCP Bridge Control Plugin
+            vestackMCP plugin
 
-            This plugin enables control of the MCP (Model Context Protocol) Bridge for Cadwork.
+            This plugin starts the vestackMCP bridge (MCP, Model Context Protocol) for Cadwork.
             
             Features:
             • Automatic bridge connection startup
@@ -55,9 +55,9 @@
         </Text>
         <Text language="French">
             <![CDATA[
-            Plugin de controle du pont MCP
+            Plugin vestackMCP
 
-            Ce plugin permet de controler le pont MCP (Model Context Protocol) pour Cadwork.
+            Ce plugin demarre le pont vestackMCP (MCP, Model Context Protocol) pour Cadwork.
             
             Fonctionnalites:
             • Demarrage automatique de la connexion du pont

@@ -1,5 +1,5 @@
 """
-vCadworkMCP Bridge Plugin - Simple Start/Stop GUI
+vestackMCP plugin (vCadworkMCP bridge launcher)
 
 This file lives in the Cadwork user profile, away from the repository, so it has
 to be told where the repository is. See resolve_mcp_home() for how it decides.
@@ -59,7 +59,7 @@ def resolve_mcp_home() -> str:
         "vCadworkMCP checkout not found. Looked in: "
         + ", ".join(candidates)
         + ". Set CADWORK_MCP_HOME, or put the path in mcp_home.txt next to "
-        + "MCPBridge.py."
+        + "vestackMCP.py."
     )
 
 def is_listening(port: int = 53002, attempts: int = 5) -> bool:
@@ -99,15 +99,15 @@ def start_bridge() -> bool:
 
         bridge_running = is_listening()
         if bridge_running:
-            uc.print_to_console(f"MCP Bridge listening on 53002, from {home}")
+            uc.print_to_console(f"vestackMCP: bridge listening on 53002, from {home}")
         else:
             uc.print_to_console(
-                "MCP Bridge did not come up on port 53002. Another bridge or "
+                "vestackMCP: bridge did not come up on port 53002. Another bridge or "
                 "Cadwork instance may already hold it; restart Cadwork.")
         return bridge_running
 
     except Exception as e:
-        uc.print_to_console(f"Failed to start bridge: {e}")
+        uc.print_to_console(f"vestackMCP: failed to start bridge: {e}")
         return False
 
 def stop_bridge() -> None:
@@ -121,7 +121,7 @@ def stop_bridge() -> None:
 
     bridge_running = False
     uc.print_to_console(
-        "MCP Bridge marked as stopped. The socket stays open until Cadwork exits.")
+        "vestackMCP: bridge marked as stopped. The socket stays open until Cadwork exits.")
 
 class BridgeGUI:
     """Simple GUI for bridge control"""
@@ -135,12 +135,12 @@ class BridgeGUI:
     def create_gui(self) -> None:
         """Create the GUI"""
         self.root = tk.Tk()
-        self.root.title("MCP Bridge Control")
+        self.root.title("vestackMCP")
         self.root.geometry("380x260")
         self.root.resizable(False, False)
         
         # Title
-        title_label = ttk.Label(self.root, text="vCadworkMCP Bridge", 
+        title_label = ttk.Label(self.root, text="vestackMCP", 
                                font=("Arial", 14, "bold"))
         title_label.pack(pady=15)
         
@@ -189,7 +189,7 @@ class BridgeGUI:
         """Handle start button"""
         success = start_bridge()
         if success:
-            messagebox.showinfo("Bridge", "MCP Bridge listening on port 53002.")
+            messagebox.showinfo("Bridge", "Bridge listening on port 53002.")
         else:
             messagebox.showerror("Error", "Bridge did not start. See the Cadwork console for the reason.")
         self.update_status()
@@ -223,7 +223,7 @@ class BridgeGUI:
 def main() -> None:
     """Main plugin entry point"""
     try:
-        uc.print_to_console("Starting MCP Bridge Plugin...")
+        uc.print_to_console("Starting vestackMCP plugin...")
         gui = BridgeGUI()
         gui.show()
     except Exception as e:
